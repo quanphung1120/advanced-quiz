@@ -36,3 +36,6 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+# Go temp build artifacts
+tmp/
+apps/api/tmp/
