@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "advanced-quiz",
   "private": true,
   "scripts": {
     "build": "turbo run build",
