@@ -18,19 +18,27 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -a -installsuffix cgo \
     -o main .
 
-# Final stage - using scratch for minimal image size and attack surface
-FROM scratch
+# Final stage - using Alpine for minimal image size and security
+FROM alpine:latest
 
 WORKDIR /app
 
-# Copy CA certificates for HTTPS requests (from builder)
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# Install CA certificates and timezone data for HTTPS requests
+RUN apk --no-cache add ca-certificates tzdata \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
 
 # Copy the static binary from builder
 COPY --from=builder /app/main .
 
-# Copy config directory if it exists
-COPY --from=builder /app/config ./config
+# Set ownership to non-root user
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 8080
