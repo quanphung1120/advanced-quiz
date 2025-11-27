@@ -1,0 +1,37 @@
+# Binaries
+bin/
+tmp/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Air live reload
+.air.toml
+.air-tmp/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Turbo
+.turbo/
+
+# Dependencies are fetched during build
+vendor/
+
+# Misc
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.log

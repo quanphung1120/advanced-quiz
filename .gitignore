@@ -38,4 +38,6 @@ yarn-error.log*
 *.pem
 # Go temp build artifacts
 tmp/
+ .air-tmp/
 apps/api/tmp/
+apps/api/.air-tmp/
