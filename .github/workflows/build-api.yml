@@ -77,8 +77,8 @@ jobs:
             set -e
             echo "🚀 Starting deployment..."
             cd /home/ubuntu/servers/traefik-proxy
-            docker compose pull golang-api
-            docker compose up -d --no-deps golang-api
+            sudo docker compose pull golang-api
+            sudo docker compose up -d --no-deps golang-api
             echo "✅ Deployment complete!"
-            docker compose ps golang-api
+            sudo docker compose ps golang-api
           EOF
