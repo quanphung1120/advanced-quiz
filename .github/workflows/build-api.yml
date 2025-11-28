@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "apps/api/**"
+      - ".github/workflows/api-build.yml" # Rebuild if workflow changes
   pull_request:
     branches:
       - main
@@ -47,11 +48,11 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix=
+            type=sha,prefix={{branch}}-,format=short
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./apps/api
           push: ${{ github.event_name != 'pull_request' }}
@@ -59,6 +60,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false # Reduces image size, optional
 
       - name: Connect to Tailscale
         if: github.event_name != 'pull_request'
@@ -66,20 +68,28 @@ jobs:
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          ping: backend-server-01
           tags: tag:ci
 
       - name: Deploy to VPS
         if: github.event_name != 'pull_request'
         run: |
-          ssh -o StrictHostKeyChecking=accept-new ubuntu@backend-server-01 << 'DEPLOY_SCRIPT'
+          ssh -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=10 \
+              ubuntu@backend-server-01 << 'DEPLOY_SCRIPT'
             set -e
+            
             cd /home/ubuntu/servers/traefik-proxy
             
-            echo "🚀 Deploying golang-api..."
+            echo "🔄 Pulling latest image..."
             sudo docker compose pull golang-api
+            
+            echo "🚀 Deploying golang-api..."
             sudo docker compose up -d --no-deps --wait --wait-timeout 60 golang-api
+            
+            echo "🧹 Cleaning up old images..."
+            sudo docker image prune -f
             
             echo "✅ Deployment successful!"
             sudo docker compose ps golang-api
+            sudo docker compose logs --tail=20 golang-api
           DEPLOY_SCRIPT
