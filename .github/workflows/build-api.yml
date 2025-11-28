@@ -59,3 +59,25 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # === DEPLOYMENT STEPS ===
+      - name: Connect to Tailscale
+        if: github.event_name != 'pull_request'
+        uses: tailscale/github-action@v2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Deploy to VPS
+        if: github.event_name != 'pull_request'
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new ubuntu@backend-server-01 << 'EOF'
+            set -e
+            echo "🚀 Starting deployment..."
+            cd /home/ubuntu/servers/traefik-proxy
+            docker compose pull golang-api
+            docker compose up -d --no-deps golang-api
+            echo "✅ Deployment complete!"
+            docker compose ps golang-api
+          EOF
