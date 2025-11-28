@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -80,41 +80,32 @@ jobs:
             cd /home/ubuntu/servers/traefik-proxy
             
             echo "📦 Pulling latest image..."
-            sudo docker compose pull golang-api
+            sudo docker compose pull golang-api 2>&1 | grep -v "attribute \`version\` is obsolete" || true
             
             echo "🔄 Updating container..."
-            sudo docker compose up -d --no-deps golang-api
+            sudo docker compose up -d --no-deps golang-api 2>&1 | grep -v "attribute \`version\` is obsolete" || true
             
-            echo "⏳ Waiting for container to be healthy..."
-            MAX_RETRIES=30
-            RETRY_COUNT=0
-            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              CONTAINER_STATUS=$(sudo docker compose ps golang-api --format json | jq -r '.[0].State // .State // "unknown"' 2>/dev/null || echo "unknown")
-              HEALTH_STATUS=$(sudo docker compose ps golang-api --format json | jq -r '.[0].Health // .Health // "none"' 2>/dev/null || echo "none")
-              
-              if [ "$CONTAINER_STATUS" = "running" ]; then
-                if [ "$HEALTH_STATUS" = "healthy" ] || [ "$HEALTH_STATUS" = "none" ] || [ "$HEALTH_STATUS" = "" ]; then
-                  echo "✅ Container is running!"
-                  break
-                fi
-              elif [ "$CONTAINER_STATUS" = "exited" ] || [ "$CONTAINER_STATUS" = "dead" ]; then
-                echo "❌ Container failed to start!"
-                sudo docker compose logs --tail=50 golang-api
-                exit 1
-              fi
-              
-              RETRY_COUNT=$((RETRY_COUNT + 1))
-              echo "  Waiting... ($RETRY_COUNT/$MAX_RETRIES)"
-              sleep 2
-            done
+            echo "⏳ Waiting for container to be ready..."
+            sleep 3
             
-            if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-              echo "❌ Timeout waiting for container to be ready!"
-              sudo docker compose logs --tail=50 golang-api
+            # Get container name and check status using docker inspect
+            CONTAINER_ID=$(sudo docker compose ps -q golang-api 2>/dev/null)
+            
+            if [ -z "$CONTAINER_ID" ]; then
+              echo "❌ Container not found!"
               exit 1
             fi
             
-            echo ""
-            echo "✅ Deployment complete!"
-            sudo docker compose ps golang-api
+            CONTAINER_STATUS=$(sudo docker inspect --format='{{.State.Status}}' "$CONTAINER_ID" 2>/dev/null || echo "unknown")
+            
+            if [ "$CONTAINER_STATUS" = "running" ]; then
+              echo "✅ Container is running!"
+              echo ""
+              echo "✅ Deployment complete!"
+              sudo docker compose ps golang-api 2>&1 | grep -v "attribute \`version\` is obsolete" || true
+            else
+              echo "❌ Container is not running! Status: $CONTAINER_STATUS"
+              sudo docker compose logs --tail=50 golang-api 2>&1 | grep -v "attribute \`version\` is obsolete" || true
+              exit 1
+            fi
           DEPLOY_SCRIPT
