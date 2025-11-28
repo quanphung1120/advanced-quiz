@@ -60,7 +60,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # === DEPLOYMENT STEPS ===
       - name: Connect to Tailscale
         if: github.event_name != 'pull_request'
         uses: tailscale/github-action@v4
@@ -75,37 +74,12 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=accept-new ubuntu@backend-server-01 << 'DEPLOY_SCRIPT'
             set -e
-            
-            echo "🚀 Starting deployment..."
             cd /home/ubuntu/servers/traefik-proxy
             
-            echo "📦 Pulling latest image..."
-            sudo docker compose pull golang-api 2>&1 | grep -v "attribute \`version\` is obsolete" || true
+            echo "🚀 Deploying golang-api..."
+            sudo docker compose pull golang-api
+            sudo docker compose up -d --no-deps --wait --wait-timeout 60 golang-api
             
-            echo "🔄 Updating container..."
-            sudo docker compose up -d --no-deps golang-api 2>&1 | grep -v "attribute \`version\` is obsolete" || true
-            
-            echo "⏳ Waiting for container to be ready..."
-            sleep 3
-            
-            # Get container name and check status using docker inspect
-            CONTAINER_ID=$(sudo docker compose ps -q golang-api 2>/dev/null)
-            
-            if [ -z "$CONTAINER_ID" ]; then
-              echo "❌ Container not found!"
-              exit 1
-            fi
-            
-            CONTAINER_STATUS=$(sudo docker inspect --format='{{.State.Status}}' "$CONTAINER_ID" 2>/dev/null || echo "unknown")
-            
-            if [ "$CONTAINER_STATUS" = "running" ]; then
-              echo "✅ Container is running!"
-              echo ""
-              echo "✅ Deployment complete!"
-              sudo docker compose ps golang-api 2>&1 | grep -v "attribute \`version\` is obsolete" || true
-            else
-              echo "❌ Container is not running! Status: $CONTAINER_STATUS"
-              sudo docker compose logs --tail=50 golang-api 2>&1 | grep -v "attribute \`version\` is obsolete" || true
-              exit 1
-            fi
+            echo "✅ Deployment successful!"
+            sudo docker compose ps golang-api
           DEPLOY_SCRIPT

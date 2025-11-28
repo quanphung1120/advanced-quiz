@@ -7,4 +7,5 @@ import (
 
 func SetupRoutes(router *gin.Engine) {
 	router.GET("/", controllers.HomeController)
+	router.GET("/health", controllers.HealthController)
 }

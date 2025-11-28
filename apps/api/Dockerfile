@@ -23,8 +23,8 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Install CA certificates and timezone data for HTTPS requests
-RUN apk --no-cache add ca-certificates tzdata \
+# Install CA certificates, timezone data, and curl for health checks
+RUN apk --no-cache add ca-certificates tzdata curl \
     && rm -rf /var/cache/apk/*
 
 # Create non-root user for security
@@ -42,6 +42,10 @@ USER appuser
 
 # Expose port
 EXPOSE 3005
+
+# Health check - adjust the endpoint as needed
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:3005/health || exit 1
 
 # Run the binary
 ENTRYPOINT ["./main"]
