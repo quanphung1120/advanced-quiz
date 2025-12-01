@@ -56,6 +56,7 @@ func InitializeDatabase() (*gorm.DB, error) {
 		err = database.AutoMigrate(
 			&models.Collection{},
 			&models.CollectionCollaborator{},
+			&models.Flashcard{},
 		)
 
 		if err != nil {
