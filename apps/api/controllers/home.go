@@ -4,12 +4,16 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/quanphung1120/advanced-quiz-be/models"
 )
 
+// PublicResponse represents a response for public endpoints
+type PublicResponse struct {
+	Access string `json:"access"`
+}
+
 func HomeController(c *gin.Context) {
-	response := models.Response{
-		Message: "Hello World",
+	response := PublicResponse{
+		Access: "public",
 	}
 	c.JSON(http.StatusOK, response)
 }
