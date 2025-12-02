@@ -29,6 +29,7 @@ export function CollectionDetailClient({
   const [isCreatingCard, setIsCreatingCard] = React.useState(false);
 
   const canEdit = role === "owner" || role === "editor";
+  const isOwner = role === "owner";
 
   // Dialogs are now rendered inline so the page remains visible while editing / creating
 
@@ -60,7 +61,7 @@ export function CollectionDetailClient({
             )}
             {flashcards.length > 0 && (
               <Button asChild size="sm">
-                <Link href={`/learn/${collection.id}`}>
+                <Link href={`/learn/${collection.id}`} prefetch={false}>
                   <Play className="size-4" />
                   Start Learning
                 </Link>
@@ -91,7 +92,11 @@ export function CollectionDetailClient({
       </header>
 
       {/* Collaborators Section */}
-      <CollaboratorsSection collaborators={collection.collaborators || []} />
+      <CollaboratorsSection
+        collectionId={collection.id}
+        collaborators={collection.collaborators || []}
+        isOwner={isOwner}
+      />
 
       {/* Flashcards Preview Section */}
       <FlashcardsPreview

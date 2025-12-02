@@ -24,26 +24,32 @@ import {
 import type { Collection } from "@/types/collection";
 import { CreateCollectionDialog } from "@/features/collections/components/create-collection-dialog";
 
+import { Badge } from "@/components/ui/badge";
+
 const navItems = [
   {
     title: "Collections",
     url: "/dashboard",
     icon: FolderIcon,
+    comingSoon: false,
   },
   {
     title: "Review",
     url: "/dashboard/review",
     icon: BookOpenIcon,
+    comingSoon: true,
   },
   {
     title: "Analytics",
     url: "/dashboard/analytics",
     icon: BarChart3Icon,
+    comingSoon: true,
   },
   {
     title: "Community",
     url: "/dashboard/community",
     icon: UsersIcon,
+    comingSoon: true,
   },
 ];
 
@@ -66,7 +72,7 @@ export function AppSidebar({ collections }: AppSidebarProps) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
+              <Link href="/dashboard" prefetch={false}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <BookOpenIcon className="size-4" />
                 </div>
@@ -92,9 +98,21 @@ export function AppSidebar({ collections }: AppSidebarProps) {
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
-                    <Link href={item.url}>
+                    <Link
+                      href={item.url}
+                      className="flex items-center gap-2"
+                      prefetch={false}
+                    >
                       <item.icon className="size-4" />
-                      <span>{item.title}</span>
+                      <span className="flex-1">{item.title}</span>
+                      {item.comingSoon && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0.5"
+                        >
+                          Soon
+                        </Badge>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -114,7 +132,10 @@ export function AppSidebar({ collections }: AppSidebarProps) {
               {recentCollections.map((collection) => (
                 <SidebarMenuItem key={collection.id}>
                   <SidebarMenuButton asChild tooltip={collection.name}>
-                    <Link href={`/dashboard/collections/${collection.id}`}>
+                    <Link
+                      href={`/dashboard/collections/${collection.id}`}
+                      prefetch={false}
+                    >
                       <FolderIcon className="size-4" />
                       <span className="truncate">{collection.name}</span>
                     </Link>

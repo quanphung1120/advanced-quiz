@@ -76,7 +76,9 @@ export function Navbar() {
 
           <SignedIn>
             <Button asChild size="sm">
-              <Link href="/dashboard">Dashboard</Link>
+              <Link href="/dashboard" prefetch={false}>
+                Dashboard
+              </Link>
             </Button>
           </SignedIn>
         </div>

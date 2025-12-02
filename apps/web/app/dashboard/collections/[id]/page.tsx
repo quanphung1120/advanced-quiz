@@ -13,21 +13,24 @@ export default async function CollectionDetailPage({
 }: CollectionDetailPageProps) {
   const { id } = await params;
 
-  const [collection, flashcardsData] = await Promise.all([
+  const [collectionData, flashcardsData] = await Promise.all([
     getCollection(id),
     getCollectionFlashcards(id),
   ]);
 
-  if (!collection) {
+  if (!collectionData.collection) {
     notFound();
   }
+
+  // Use the role from collection endpoint, or fallback to flashcards role
+  const role = collectionData.role || flashcardsData.role;
 
   return (
     <Suspense fallback={<CollectionDetailSkeleton />}>
       <CollectionDetailClient
-        collection={collection}
+        collection={collectionData.collection}
         flashcards={flashcardsData.flashcards}
-        role={flashcardsData.role}
+        role={role}
       />
     </Suspense>
   );

@@ -18,4 +18,7 @@ type CollectionCollaborator struct {
 
 	// Role defines permissions (e.g., "viewer", "editor", "admin")
 	Role string `gorm:"size:50;default:'viewer'" json:"role"`
+
+	// Email is populated from Clerk API, not stored in DB
+	Email string `gorm:"-" json:"email,omitempty"`
 }

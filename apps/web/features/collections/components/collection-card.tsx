@@ -7,7 +7,6 @@ import {
   MoreHorizontalIcon,
   PencilIcon,
   TrashIcon,
-  FolderIcon,
   LayersIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -161,7 +160,10 @@ export function CollectionCard({ collection }: CollectionCardProps) {
                 style={{ backgroundColor: color.accent }}
                 asChild
               >
-                <Link href={`/dashboard/collections/${collection.id}`}>
+                <Link
+                  href={`/dashboard/collections/${collection.id}`}
+                  prefetch={false}
+                >
                   <BookOpenIcon className="h-3.5 w-3.5" />
                   Study
                 </Link>

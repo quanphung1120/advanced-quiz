@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { fetchWithAuth } from "@/lib/api";
 import type {
   CreateCollectionRequest,
@@ -8,6 +8,9 @@ import type {
   UpdateCollectionRequest,
   UpdateCollectionResponse,
   DeleteCollectionResponse,
+  AddCollaboratorRequest,
+  AddCollaboratorResponse,
+  RemoveCollaboratorResponse,
 } from "@/types/collection";
 import { auth } from "@clerk/nextjs/server";
 
@@ -94,6 +97,102 @@ export async function deleteCollection(
       success: false,
       error:
         error instanceof Error ? error.message : "Failed to delete collection",
+    };
+  }
+}
+
+export async function addCollaborator(
+  collectionId: string,
+  data: AddCollaboratorRequest
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetchWithAuth<AddCollaboratorResponse>(
+      `/api/v1/collections/${collectionId}/collaborators`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (response.errorMessage) {
+      return { success: false, error: response.errorMessage };
+    }
+
+    revalidatePath(`/dashboard/collections/${collectionId}`);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to add collaborator",
+    };
+  }
+}
+
+export async function removeCollaborator(
+  collectionId: string,
+  collaboratorId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetchWithAuth<RemoveCollaboratorResponse>(
+      `/api/v1/collections/${collectionId}/collaborators/${collaboratorId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (response.errorMessage) {
+      return { success: false, error: response.errorMessage };
+    }
+
+    revalidatePath(`/dashboard/collections/${collectionId}`);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to remove collaborator",
+    };
+  }
+}
+
+export async function searchUsers(
+  query: string
+): Promise<{ emails: string[]; error?: string }> {
+  const { getToken, isAuthenticated } = await auth();
+
+  if (!getToken || !isAuthenticated) {
+    return { emails: [], error: "User is not authenticated" };
+  }
+
+  const token = await getToken();
+  if (!token) {
+    return { emails: [], error: "Failed to retrieve auth token" };
+  }
+
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/users/search-email-addresses?query=${encodeURIComponent(query)}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return { emails: [], error: "Failed to search users" };
+    }
+
+    const data: { emails: string[] } = await response.json();
+    return { emails: data.emails || [] };
+  } catch (error) {
+    return {
+      emails: [],
+      error: error instanceof Error ? error.message : "Failed to search users",
     };
   }
 }

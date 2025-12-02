@@ -1,11 +1,70 @@
 package controllers
 
 import (
+	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/quanphung1120/advanced-quiz-be/models"
 	"github.com/quanphung1120/advanced-quiz-be/requests"
 	"github.com/quanphung1120/advanced-quiz-be/utils"
 )
+
+// GetMyCollectionsController returns all collections owned by or shared with the user
+func GetMyCollectionsController(context *gin.Context) {
+	userData, err := utils.GetUserDataFromContext(context.Request.Context())
+	if err != nil || userData == nil {
+		context.JSON(401, gin.H{
+			"errorMessage": "Unauthorized",
+		})
+		return
+	}
+
+	db := utils.GetDatabase()
+
+	// Get collections owned by the user with collaborators preloaded
+	var ownedCollections []models.Collection
+	db.Preload("Collaborators").Where("owner_id = ?", userData.ID).Find(&ownedCollections)
+
+	// Get collections where user is a collaborator
+	var collaborations []models.CollectionCollaborator
+	db.Where("user_id = ?", userData.ID).Find(&collaborations)
+
+	var sharedCollections []models.Collection
+	if len(collaborations) > 0 {
+		collectionIDs := make([]uuid.UUID, len(collaborations))
+		for i, collab := range collaborations {
+			collectionIDs[i] = collab.CollectionID
+		}
+		db.Preload("Collaborators").Where("id IN ?", collectionIDs).Find(&sharedCollections)
+	}
+
+	// Fetch collaborator emails from Clerk for owned collections
+	for i := range ownedCollections {
+		ownedCollections[i].Collaborators = enrichCollaboratorsWithEmail(context, ownedCollections[i].Collaborators)
+	}
+
+	// Fetch collaborator emails from Clerk for shared collections
+	for i := range sharedCollections {
+		sharedCollections[i].Collaborators = enrichCollaboratorsWithEmail(context, sharedCollections[i].Collaborators)
+	}
+
+	context.JSON(200, gin.H{
+		"owned_collections":  ownedCollections,
+		"shared_collections": sharedCollections,
+		"errorMessage":       "",
+	})
+}
+
+// enrichCollaboratorsWithEmail fetches user emails from Clerk and enriches collaborator data
+func enrichCollaboratorsWithEmail(context *gin.Context, collaborators []models.CollectionCollaborator) []models.CollectionCollaborator {
+	for i := range collaborators {
+		u, err := user.Get(context.Request.Context(), collaborators[i].UserID)
+		if err == nil && u != nil && len(u.EmailAddresses) > 0 {
+			collaborators[i].Email = u.EmailAddresses[0].EmailAddress
+		}
+	}
+	return collaborators
+}
 
 func GetCollectionsController(context *gin.Context) {
 	user, err := utils.GetUserDataFromContext(context.Request.Context())
@@ -33,8 +92,8 @@ func GetCollectionsController(context *gin.Context) {
 
 func GetCollectionController(context *gin.Context) {
 
-	user, err := utils.GetUserDataFromContext(context.Request.Context())
-	if err != nil || user == nil {
+	userData, err := utils.GetUserDataFromContext(context.Request.Context())
+	if err != nil || userData == nil {
 		context.JSON(401, gin.H{
 			"errorMessage": "Unauthorized",
 		})
@@ -42,18 +101,45 @@ func GetCollectionController(context *gin.Context) {
 	}
 
 	collectionID := context.Param("id")
-	var collection models.Collection
-	db := utils.GetDatabase()
-	if db.Where("id = ? AND owner_id = ?", collectionID, user.ID).First(&collection).Error != nil {
-		context.JSON(404, gin.H{
-			"errorMessage": "Collection not found",
+	collectionUUID, err := uuid.Parse(collectionID)
+	if err != nil {
+		context.JSON(400, gin.H{
+			"errorMessage": "Invalid collection ID",
 		})
-	} else {
+		return
+	}
+
+	db := utils.GetDatabase()
+	var collection models.Collection
+
+	// First try to find as owner
+	if db.Preload("Collaborators").Where("id = ? AND owner_id = ?", collectionUUID, userData.ID).First(&collection).Error == nil {
+		// Enrich collaborators with email
+		collection.Collaborators = enrichCollaboratorsWithEmail(context, collection.Collaborators)
 		context.JSON(200, gin.H{
 			"collection":   collection,
+			"role":         "owner",
 			"errorMessage": "",
 		})
+		return
 	}
+
+	// Check if user is a collaborator
+	var collab models.CollectionCollaborator
+	if db.Where("collection_id = ? AND user_id = ?", collectionUUID, userData.ID).First(&collab).Error == nil {
+		db.Preload("Collaborators").First(&collection, collectionUUID)
+		collection.Collaborators = enrichCollaboratorsWithEmail(context, collection.Collaborators)
+		context.JSON(200, gin.H{
+			"collection":   collection,
+			"role":         collab.Role,
+			"errorMessage": "",
+		})
+		return
+	}
+
+	context.JSON(404, gin.H{
+		"errorMessage": "Collection not found",
+	})
 }
 
 func CreateCollectionController(context *gin.Context) {
@@ -174,8 +260,8 @@ func DeleteCollectionController(context *gin.Context) {
 }
 
 func AddCollaboratorController(context *gin.Context) {
-	user, err := utils.GetUserDataFromContext(context.Request.Context())
-	if err != nil || user == nil {
+	userData, err := utils.GetUserDataFromContext(context.Request.Context())
+	if err != nil || userData == nil {
 		context.JSON(401, gin.H{
 			"errorMessage": "Unauthorized",
 		})
@@ -185,9 +271,9 @@ func AddCollaboratorController(context *gin.Context) {
 	collectionID := context.Param("id")
 	var collection models.Collection
 	db := utils.GetDatabase()
-	if db.Where("id = ? AND owner_id = ?", collectionID, user.ID).First(&collection).Error != nil {
+	if db.Where("id = ? AND owner_id = ?", collectionID, userData.ID).First(&collection).Error != nil {
 		context.JSON(404, gin.H{
-			"errorMessage": "Collection not found",
+			"errorMessage": "Collection not found or you don't have permission to manage collaborators",
 		})
 		return
 	}
@@ -201,19 +287,62 @@ func AddCollaboratorController(context *gin.Context) {
 		return
 	}
 
-	// Prevent owner from adding themselves as collaborator
-	if addCollaboratorBody.UserID == user.ID {
+	// Look up user by email using Clerk API
+	email := addCollaboratorBody.Email
+	if email == "" {
 		context.JSON(400, gin.H{
-			"errorMessage": "Owner cannot be added as a collaborator",
+			"errorMessage": "Email is required",
+		})
+		return
+	}
+
+	// Search for user by email in Clerk
+	users, err := user.List(context.Request.Context(), &user.ListParams{
+		EmailAddressQuery: &email,
+	})
+	if err != nil {
+		context.JSON(500, gin.H{
+			"errorMessage": "Failed to search for user",
+		})
+		return
+	}
+
+	// Find exact email match
+	var targetUserID string
+	var targetEmail string
+	for _, u := range users.Users {
+		for _, emailAddr := range u.EmailAddresses {
+			if emailAddr.EmailAddress == email {
+				targetUserID = u.ID
+				targetEmail = emailAddr.EmailAddress
+				break
+			}
+		}
+		if targetUserID != "" {
+			break
+		}
+	}
+
+	if targetUserID == "" {
+		context.JSON(404, gin.H{
+			"errorMessage": "No user found with this email address",
+		})
+		return
+	}
+
+	// Prevent owner from adding themselves as collaborator
+	if targetUserID == userData.ID {
+		context.JSON(400, gin.H{
+			"errorMessage": "You cannot add yourself as a collaborator",
 		})
 		return
 	}
 
 	// Check if collaborator already exists
 	var existingCollaborator models.CollectionCollaborator
-	if db.Where("collection_id = ? AND user_id = ?", collection.ID, addCollaboratorBody.UserID).First(&existingCollaborator).Error == nil {
+	if db.Where("collection_id = ? AND user_id = ?", collection.ID, targetUserID).First(&existingCollaborator).Error == nil {
 		context.JSON(400, gin.H{
-			"errorMessage": "User is already a collaborator",
+			"errorMessage": "This user is already a collaborator",
 		})
 		return
 	}
@@ -235,8 +364,9 @@ func AddCollaboratorController(context *gin.Context) {
 	// Create collaborator
 	collaborator := models.CollectionCollaborator{
 		CollectionID: collection.ID,
-		UserID:       addCollaboratorBody.UserID,
+		UserID:       targetUserID,
 		Role:         role,
+		Email:        targetEmail,
 	}
 
 	if db.Create(&collaborator).Error != nil {
@@ -248,6 +378,49 @@ func AddCollaboratorController(context *gin.Context) {
 
 	context.JSON(200, gin.H{
 		"collaborator": collaborator,
+		"errorMessage": "",
+	})
+}
+
+func RemoveCollaboratorController(context *gin.Context) {
+	userData, err := utils.GetUserDataFromContext(context.Request.Context())
+	if err != nil || userData == nil {
+		context.JSON(401, gin.H{
+			"errorMessage": "Unauthorized",
+		})
+		return
+	}
+
+	collectionID := context.Param("id")
+	collaboratorID := context.Param("collaboratorId")
+
+	var collection models.Collection
+	db := utils.GetDatabase()
+	if db.Where("id = ? AND owner_id = ?", collectionID, userData.ID).First(&collection).Error != nil {
+		context.JSON(404, gin.H{
+			"errorMessage": "Collection not found or you don't have permission to manage collaborators",
+		})
+		return
+	}
+
+	// Find and delete the collaborator
+	var collaborator models.CollectionCollaborator
+	if db.Where("id = ? AND collection_id = ?", collaboratorID, collection.ID).First(&collaborator).Error != nil {
+		context.JSON(404, gin.H{
+			"errorMessage": "Collaborator not found",
+		})
+		return
+	}
+
+	if db.Delete(&collaborator).Error != nil {
+		context.JSON(500, gin.H{
+			"errorMessage": "Failed to remove collaborator",
+		})
+		return
+	}
+
+	context.JSON(200, gin.H{
+		"message":      "Collaborator removed successfully",
 		"errorMessage": "",
 	})
 }

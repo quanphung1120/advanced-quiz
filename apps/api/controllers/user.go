@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 
+	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/gin-gonic/gin"
 	"github.com/quanphung1120/advanced-quiz-be/utils"
 )
@@ -49,5 +50,40 @@ func MeController(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"user": response,
+	})
+}
+
+func SearchEmailAddressesController(ctx *gin.Context) {
+	query := ctx.Query("query")
+	if query == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Bad Request",
+			"message": "query parameter is required",
+		})
+		return
+	}
+
+	users, err := user.List(ctx.Request.Context(), &user.ListParams{
+		EmailAddressQuery: &query,
+	})
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Internal Server Error",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	emails := []string{}
+	for _, u := range users.Users {
+		for _, email := range u.EmailAddresses {
+			emails = append(emails, email.EmailAddress)
+		}
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"emails": emails,
 	})
 }

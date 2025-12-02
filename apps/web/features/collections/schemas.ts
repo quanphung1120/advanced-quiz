@@ -27,5 +27,14 @@ export const updateCollectionSchema = z.object({
   image: z.string().optional(),
 });
 
+export const addCollaboratorSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email address"),
+  role: z.enum(["viewer", "editor", "admin"]),
+});
+
 export type CreateCollectionFormData = z.infer<typeof createCollectionSchema>;
 export type UpdateCollectionFormData = z.infer<typeof updateCollectionSchema>;
+export type AddCollaboratorFormData = z.infer<typeof addCollaboratorSchema>;

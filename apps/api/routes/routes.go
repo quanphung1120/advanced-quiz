@@ -30,15 +30,17 @@ func SetupRoutes(router *gin.Engine) {
 	// User routes
 	users := protected.Group("/users")
 	users.GET("/me", controllers.MeController)
+	users.GET("/search-email-addresses", controllers.SearchEmailAddressesController)
 
 	// Collection routes
 	collections := protected.Group("/collections")
-	collections.GET("/", controllers.GetCollectionsController)
+	collections.GET("/me", controllers.GetMyCollectionsController)
 	collections.GET("/:id", controllers.GetCollectionController)
 	collections.POST("/", controllers.CreateCollectionController)
 	collections.PUT("/:id", controllers.UpdateCollectionController)
 	collections.DELETE("/:id", controllers.DeleteCollectionController)
 	collections.POST("/:id/collaborators", controllers.AddCollaboratorController)
+	collections.DELETE("/:id/collaborators/:collaboratorId", controllers.RemoveCollaboratorController)
 
 	// Flashcard routes (nested under collections)
 	collections.GET("/:id/flashcards", controllers.GetCollectionFlashcardsController)

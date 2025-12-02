@@ -140,7 +140,7 @@ export function HeroSection() {
               asChild
               className="group min-w-[180px] gap-2 text-base"
             >
-              <Link href="/dashboard">
+              <Link href="/dashboard" prefetch={false}>
                 Go to Dashboard
                 <svg
                   className="h-4 w-4 transition-transform group-hover:translate-x-1"

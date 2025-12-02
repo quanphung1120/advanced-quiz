@@ -161,7 +161,10 @@ export function LearningCarouselClient({
         <div className="container max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
-              <Link href={`/dashboard/collections/${collectionId}`}>
+              <Link
+                href={`/dashboard/collections/${collectionId}`}
+                prefetch={false}
+              >
                 <ChevronLeft className="size-5" />
                 <span className="sr-only">Back to collection</span>
               </Link>

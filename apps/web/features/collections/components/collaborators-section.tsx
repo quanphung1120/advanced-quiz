@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, User, Users } from "lucide-react";
+import * as React from "react";
+import { Plus, User, Users, X, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,15 +15,34 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { CollectionCollaborator } from "@/types/collection";
+import { removeCollaborator } from "../service/actions";
+import { AddCollaboratorDialog } from "./add-collaborator-dialog";
 
 interface CollaboratorsSectionProps {
+  collectionId: string;
   collaborators: CollectionCollaborator[];
+  isOwner: boolean;
 }
 
 export function CollaboratorsSection({
+  collectionId,
   collaborators,
+  isOwner,
 }: CollaboratorsSectionProps) {
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+
   return (
     <Card>
       <CardHeader>
@@ -33,12 +53,18 @@ export function CollaboratorsSection({
         <CardDescription>
           People who have access to this collection
         </CardDescription>
-        <CardAction>
-          <Button variant="outline" size="sm" disabled>
-            <Plus className="size-4" />
-            Add Collaborator
-          </Button>
-        </CardAction>
+        {isOwner && (
+          <CardAction>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddDialogOpen(true)}
+            >
+              <Plus className="size-4" />
+              Add Collaborator
+            </Button>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
         {collaborators.length === 0 ? (
@@ -51,7 +77,9 @@ export function CollaboratorsSection({
                 No collaborators yet
               </p>
               <p className="text-sm">
-                Add collaborators to share this collection with others.
+                {isOwner
+                  ? "Add collaborators to share this collection with others."
+                  : "This collection has no other collaborators."}
               </p>
             </div>
           </div>
@@ -60,21 +88,39 @@ export function CollaboratorsSection({
             {collaborators.map((collaborator) => (
               <CollaboratorChip
                 key={collaborator.id}
+                collectionId={collectionId}
                 collaborator={collaborator}
+                canRemove={isOwner}
               />
             ))}
           </div>
         )}
       </CardContent>
+
+      {isOwner && (
+        <AddCollaboratorDialog
+          collectionId={collectionId}
+          open={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+        />
+      )}
     </Card>
   );
 }
 
 interface CollaboratorChipProps {
+  collectionId: string;
   collaborator: CollectionCollaborator;
+  canRemove: boolean;
 }
 
-function CollaboratorChip({ collaborator }: CollaboratorChipProps) {
+function CollaboratorChip({
+  collectionId,
+  collaborator,
+  canRemove,
+}: CollaboratorChipProps) {
+  const [isRemoving, setIsRemoving] = React.useState(false);
+
   const roleColors = {
     admin: "bg-primary/10 text-primary border-primary/20",
     editor:
@@ -82,17 +128,29 @@ function CollaboratorChip({ collaborator }: CollaboratorChipProps) {
     viewer: "bg-muted text-muted-foreground border-border",
   };
 
+  const displayName =
+    collaborator.email || `User ${collaborator.user_id.slice(-4)}`;
+  const initials = collaborator.email
+    ? collaborator.email.slice(0, 2).toUpperCase()
+    : collaborator.user_id.slice(0, 2).toUpperCase();
+
+  async function handleRemove() {
+    setIsRemoving(true);
+    try {
+      await removeCollaborator(collectionId, collaborator.id);
+    } finally {
+      setIsRemoving(false);
+    }
+  }
+
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-background">
+    <div className="group flex items-center gap-2 px-3 py-1.5 rounded-full border bg-background transition-colors hover:bg-muted/50">
       <Avatar className="size-6">
         <AvatarImage src={undefined} />
-        <AvatarFallback className="text-xs">
-          {collaborator.user_id.slice(0, 2).toUpperCase()}
-        </AvatarFallback>
+        <AvatarFallback className="text-xs">{initials}</AvatarFallback>
       </Avatar>
-      <span className="text-sm font-medium">
-        {/* TODO: Fetch user name from Clerk */}
-        User {collaborator.user_id.slice(-4)}
+      <span className="text-sm font-medium truncate max-w-32">
+        {displayName}
       </span>
       <Badge
         variant="outline"
@@ -100,6 +158,47 @@ function CollaboratorChip({ collaborator }: CollaboratorChipProps) {
       >
         {collaborator.role}
       </Badge>
+
+      {canRemove && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-5 -mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+              disabled={isRemoving}
+            >
+              {isRemoving ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <X className="size-3" />
+              )}
+              <span className="sr-only">Remove collaborator</span>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Collaborator</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove{" "}
+                <span className="font-medium text-foreground">
+                  {displayName}
+                </span>{" "}
+                from this collection? They will lose access to all flashcards.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleRemove}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

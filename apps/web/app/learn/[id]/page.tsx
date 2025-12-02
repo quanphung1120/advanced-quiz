@@ -11,12 +11,12 @@ interface LearnPageProps {
 export default async function LearnPage({ params }: LearnPageProps) {
   const { id } = await params;
 
-  const [collection, flashcardsData] = await Promise.all([
+  const [collectionData, flashcardsData] = await Promise.all([
     getCollection(id),
     getCollectionFlashcards(id),
   ]);
 
-  if (!collection) {
+  if (!collectionData.collection) {
     notFound();
   }
 
@@ -37,8 +37,8 @@ export default async function LearnPage({ params }: LearnPageProps) {
   return (
     <Suspense fallback={<LearningCarouselSkeleton />}>
       <LearningCarouselClient
-        collectionId={collection.id}
-        collectionName={collection.name}
+        collectionId={collectionData.collection.id}
+        collectionName={collectionData.collection.name}
         flashcards={flashcardsData.flashcards}
       />
     </Suspense>
