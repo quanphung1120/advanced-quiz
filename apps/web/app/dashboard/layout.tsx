@@ -1,3 +1,5 @@
+import { BellIcon } from "lucide-react";
+
 import {
   SidebarProvider,
   SidebarInset,
@@ -5,7 +7,9 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/features/dashboard/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { getCollections } from "@/features/collections/service/api";
+import { HeaderUserDropdown } from "@/features/dashboard/components/header-user-dropdown";
 
 export default async function DashboardLayout({
   children,
@@ -18,10 +22,22 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar collections={collections} />
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <h1 className="text-sm font-medium">Dashboard</h1>
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border/50 bg-background px-4">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <h1 className="text-sm font-medium">Dashboard</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="relative">
+              <BellIcon className="size-5" />
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                3
+              </span>
+              <span className="sr-only">Notifications</span>
+            </Button>
+            <HeaderUserDropdown />
+          </div>
         </header>
         <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </SidebarInset>

@@ -12,7 +12,6 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupAction,
   SidebarGroupContent,
@@ -22,7 +21,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { UserDropdown } from "./user-dropdown";
 import type { Collection } from "@/types/collection";
 import { CreateCollectionDialog } from "@/features/collections/components/create-collection-dialog";
 
@@ -127,10 +125,6 @@ export function AppSidebar({ collections }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter>
-        <UserDropdown />
-      </SidebarFooter>
     </Sidebar>
   );
 }

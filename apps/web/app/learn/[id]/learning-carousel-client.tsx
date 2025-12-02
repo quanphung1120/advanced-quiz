@@ -149,8 +149,15 @@ export function LearningCarouselClient({
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      {/* Subtle Background */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-4 top-20 h-48 w-48 rounded-full bg-primary/5 blur-3xl" />
+        <div className="absolute -right-4 top-40 h-64 w-64 rounded-full bg-primary/3 blur-3xl" />
+        <div className="absolute bottom-20 left-1/3 h-48 w-48 rounded-full bg-accent/20 blur-3xl" />
+      </div>
+
       {/* Header */}
-      <header className="border-b">
+      <header className="relative border-b border-border/50 bg-background/80 backdrop-blur-sm">
         <div className="container max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
@@ -177,7 +184,7 @@ export function LearningCarouselClient({
       </header>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+      <main className="relative flex-1 flex flex-col items-center justify-center px-4 py-8">
         <div className="w-full max-w-2xl space-y-8">
           {/* Progress indicator */}
           <div className="space-y-2">
@@ -244,7 +251,7 @@ export function LearningCarouselClient({
       </main>
 
       {/* Footer with keyboard hints */}
-      <footer className="border-t py-4">
+      <footer className="relative border-t border-border/50 bg-background/80 py-4 backdrop-blur-sm">
         <div className="container max-w-4xl mx-auto px-4">
           <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">

@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { CreateCollectionDialog } from "@/features/collections/components/create-collection-dialog";
 import { CollectionEmptyState } from "@/features/collections/components/collection-empty-state";
 import { CollectionCard } from "@/features/collections/components/collection-card";
@@ -66,7 +67,10 @@ function CommunityDeckCard({
   downloads: number;
 }) {
   return (
-    <Card className="group transition-colors hover:border-primary/50">
+    <Card className="group relative border-border/50 bg-background/50 backdrop-blur-sm transition-colors hover:border-primary/20 hover:shadow-md">
+      <Badge variant="secondary" className="absolute right-4 top-4 text-xs">
+        Coming Soon
+      </Badge>
       <CardHeader>
         <CardTitle className="line-clamp-1 text-base">{title}</CardTitle>
         <CardDescription>by {author}</CardDescription>
@@ -78,7 +82,7 @@ function CommunityDeckCard({
         </div>
       </CardContent>
       <CardFooter>
-        <Button size="sm" variant="outline" className="w-full">
+        <Button size="sm" variant="outline" className="w-full" disabled>
           Preview
         </Button>
       </CardFooter>
@@ -94,16 +98,16 @@ export default async function DashboardPage() {
       {/* Hero Section */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
-          <h1 className="font-serif text-3xl font-bold tracking-tight md:text-4xl lg:text-5xl">
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
             Ready to learn?
           </h1>
-          <p className="text-base text-muted-foreground md:text-lg">
-            Pick up where you left off or discover new collections.
+          <p className="text-base text-muted-foreground">
+            Pick up where you left off or create a new collection.
           </p>
         </div>
         <CreateCollectionDialog
           trigger={
-            <Button>
+            <Button className="gap-2">
               <PlusIcon className="size-4" />
               New Collection
             </Button>
@@ -117,7 +121,7 @@ export default async function DashboardPage() {
         <Input
           type="search"
           placeholder="Search collections..."
-          className="h-10 pl-10 text-sm md:h-12 md:pl-12 md:text-base"
+          className="h-10 border-border/50 bg-background pl-10 transition-colors focus:border-primary/50 md:h-12 md:pl-12"
         />
       </div>
 
@@ -125,7 +129,12 @@ export default async function DashboardPage() {
       <Tabs defaultValue="my-collections" className="space-y-4">
         <TabsList>
           <TabsTrigger value="my-collections">My Collections</TabsTrigger>
-          <TabsTrigger value="community">Community</TabsTrigger>
+          <TabsTrigger value="community">
+            Community
+            <Badge variant="secondary" className="ml-2 text-[10px]">
+              Soon
+            </Badge>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="my-collections">
@@ -141,6 +150,12 @@ export default async function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="community">
+          <div className="mb-4 rounded-lg border border-border/50 bg-muted/30 p-4">
+            <p className="text-sm text-muted-foreground">
+              🚀 Community decks are coming soon! You&apos;ll be able to browse
+              and import flashcard collections shared by other learners.
+            </p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {communityDecks.map((deck) => (
               <CommunityDeckCard
