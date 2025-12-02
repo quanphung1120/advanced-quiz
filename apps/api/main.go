@@ -12,9 +12,13 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Warning: Error loading .env file:", err)
+	// Load environment variables from .env file in development
+	isDevelopment := os.Getenv("GIN_MODE") != "release"
+	if isDevelopment {
+		err := godotenv.Load()
+		if err != nil {
+			log.Println("Warning: Error loading .env file:", err)
+		}
 	}
 
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
@@ -23,7 +27,7 @@ func main() {
 	}
 	clerk.SetKey(clerkSecretKey)
 
-	_, err = utils.InitializeDatabase()
+	_, err := utils.InitializeDatabase()
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
