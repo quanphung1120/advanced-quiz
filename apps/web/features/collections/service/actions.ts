@@ -9,10 +9,30 @@ import type {
   UpdateCollectionResponse,
   DeleteCollectionResponse,
 } from "@/types/collection";
+import { auth } from "@clerk/nextjs/server";
 
 export async function createCollection(
   data: CreateCollectionRequest
 ): Promise<{ success: boolean; error?: string }> {
+  const { getToken, isAuthenticated } = await auth();
+
+  if (!getToken || !isAuthenticated) {
+    console.error("No auth token available for createCollection");
+    return {
+      success: false,
+      error: "User is not authenticated",
+    };
+  }
+
+  const token = await getToken();
+  if (!token) {
+    console.error("Failed to retrieve auth token for createCollection");
+    return {
+      success: false,
+      error: "Failed to retrieve auth token",
+    };
+  }
+
   try {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/collections/`,
@@ -20,6 +40,7 @@ export async function createCollection(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(data),
       }
@@ -28,6 +49,7 @@ export async function createCollection(
     if (result.errorMessage) {
       return { success: false, error: result.errorMessage };
     }
+
     revalidatePath("/dashboard");
     return { success: true };
   } catch (error) {
