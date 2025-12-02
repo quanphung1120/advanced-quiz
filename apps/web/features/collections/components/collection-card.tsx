@@ -103,25 +103,23 @@ export function CollectionCard({ collection }: CollectionCardProps) {
           </CardDescription>
         </CardHeader>
 
-        {collection.image || imageError ? (
-          <div className="px-6 pb-4">
-            {collection.image && !imageError ? (
-              <div className="relative w-full h-32 rounded-md overflow-hidden">
-                <Image
-                  src={collection.image}
-                  alt={collection.name}
-                  fill
-                  className="object-cover"
-                  onError={() => setImageError(true)}
-                />
-              </div>
-            ) : (
-              <div className="w-full h-32 bg-muted flex items-center justify-center rounded-md">
-                <FolderIcon className="h-8 w-8 text-muted-foreground" />
-              </div>
-            )}
-          </div>
-        ) : null}
+        <div className="px-6 pb-4">
+          {collection.image && !imageError ? (
+            <div className="relative w-full h-32 rounded-md overflow-hidden">
+              <Image
+                src={collection.image}
+                alt={collection.name}
+                fill
+                className="object-cover"
+                onError={() => setImageError(true)}
+              />
+            </div>
+          ) : (
+            <div className="w-full h-32 bg-muted flex items-center justify-center rounded-md">
+              <FolderIcon className="h-8 w-8 text-muted-foreground" />
+            </div>
+          )}
+        </div>
 
         <CardContent>
           <p className="text-sm text-muted-foreground">
