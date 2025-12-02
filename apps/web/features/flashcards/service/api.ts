@@ -12,18 +12,12 @@ export async function getCollectionFlashcards(collectionId: string): Promise<{
   const { getToken, isAuthenticated } = await auth();
 
   if (!getToken || !isAuthenticated) {
-    console.error(
-      "[FRONTEND] No auth token available for getCollectionFlashcards"
-    );
     return { flashcards: [], role: null };
   }
 
   const token = await getToken();
 
   if (!token) {
-    console.error(
-      "[FRONTEND] Failed to retrieve auth token for getCollectionFlashcards"
-    );
     return { flashcards: [], role: null };
   }
 
@@ -40,7 +34,6 @@ export async function getCollectionFlashcards(collectionId: string): Promise<{
     );
 
     if (!response.ok) {
-      console.error("[FRONTEND] API request failed:", await response.text());
       return { flashcards: [], role: null };
     }
 
@@ -49,8 +42,7 @@ export async function getCollectionFlashcards(collectionId: string): Promise<{
       flashcards: data.flashcards || [],
       role: data.role || null,
     };
-  } catch (error) {
-    console.error("[FRONTEND] Failed to fetch flashcards:", error);
+  } catch {
     return { flashcards: [], role: null };
   }
 }
@@ -65,14 +57,12 @@ export async function getFlashcard(
   const { getToken, isAuthenticated } = await auth();
 
   if (!getToken || !isAuthenticated) {
-    console.error("[FRONTEND] No auth token available for getFlashcard");
     return { flashcard: null, role: null };
   }
 
   const token = await getToken();
 
   if (!token) {
-    console.error("[FRONTEND] Failed to retrieve auth token for getFlashcard");
     return { flashcard: null, role: null };
   }
 
@@ -88,7 +78,6 @@ export async function getFlashcard(
     );
 
     if (!response.ok) {
-      console.error("[FRONTEND] API request failed:", response.status);
       return { flashcard: null, role: null };
     }
 
@@ -97,8 +86,7 @@ export async function getFlashcard(
       flashcard: data.flashcard || null,
       role: data.role || null,
     };
-  } catch (error) {
-    console.error("[FRONTEND] Failed to fetch flashcard:", error);
+  } catch {
     return { flashcard: null, role: null };
   }
 }
