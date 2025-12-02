@@ -40,7 +40,7 @@ export async function getCollectionFlashcards(collectionId: string): Promise<{
     );
 
     if (!response.ok) {
-      console.error("[FRONTEND] API request failed:", response.status);
+      console.error("[FRONTEND] API request failed:", await response.text());
       return { flashcards: [], role: null };
     }
 
