@@ -150,7 +150,8 @@ export function CreateCollectionDialog({
                     />
                   </div>
                   <FieldDescription>
-                    When enabled, the collection will be visible to everyone; otherwise it will be private.
+                    When enabled, the collection will be visible to everyone;
+                    otherwise it will be private.
                   </FieldDescription>
                 </Field>
               )}
