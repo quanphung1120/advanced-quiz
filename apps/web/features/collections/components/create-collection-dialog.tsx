@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Field,
   FieldLabel,
@@ -44,6 +45,7 @@ export function CreateCollectionDialog({
     defaultValues: {
       name: "",
       description: "",
+      is_public: false,
     },
   });
 
@@ -133,6 +135,26 @@ export function CreateCollectionDialog({
                 {form.formState.errors.root.message}
               </p>
             )}
+
+            <Controller
+              name="is_public"
+              control={form.control}
+              render={({ field }) => (
+                <Field>
+                  <div className="flex items-center justify-between">
+                    <FieldLabel htmlFor={field.name}>Public</FieldLabel>
+                    <Switch
+                      checked={!!field.value}
+                      onCheckedChange={(val) => field.onChange(val)}
+                      id={field.name}
+                    />
+                  </div>
+                  <FieldDescription>
+                    When enabled, the collection will be visible to everyone; otherwise it will be private.
+                  </FieldDescription>
+                </Field>
+              )}
+            />
           </div>
 
           <DialogFooter>

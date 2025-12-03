@@ -6,6 +6,7 @@ export interface Collection {
   description: string;
   image?: string;
   owner_id: string;
+  is_public?: boolean;
   collaborators?: CollectionCollaborator[];
 }
 
@@ -32,11 +33,13 @@ export interface GetCollectionResponse {
 export interface CreateCollectionRequest {
   name: string;
   description?: string;
+  is_public: boolean;
 }
 
 export interface UpdateCollectionRequest {
   name?: string;
   description?: string;
+  is_public?: boolean;
 }
 
 export interface CreateCollectionResponse {

@@ -11,6 +11,7 @@ export const createCollectionSchema = z.object({
     .optional()
     .or(z.literal("")),
   image: z.string().optional(),
+  is_public: z.boolean(),
 });
 
 export const updateCollectionSchema = z.object({
@@ -25,6 +26,7 @@ export const updateCollectionSchema = z.object({
     .optional()
     .or(z.literal("")),
   image: z.string().optional(),
+  is_public: z.boolean().optional(),
 });
 
 export const addCollaboratorSchema = z.object({
