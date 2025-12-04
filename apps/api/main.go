@@ -14,6 +14,7 @@ import (
 
 func main() {
 	isDevelopment := os.Getenv("GIN_MODE") != "release"
+	
 	if isDevelopment {
 		err := godotenv.Load()
 		if err != nil {
