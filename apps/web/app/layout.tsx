@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Flashcard App",
+  title: "Recallly - Master Anything with Flashcards",
   description:
-    "A simple flashcard application to help you study and memorize information effectively.",
+    "Create collections, add flashcards, and study them with ease. Recallly helps you organize your learning materials with spaced repetition science.",
 };
 
 export default function RootLayout({
@@ -32,13 +32,15 @@ export default function RootLayout({
         theme: shadcn,
       }}
     >
-      <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={`${geistSans.variable} ${geistMono.variable}`}
+      >
+        <body className="font-sans antialiased">
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
+            defaultTheme="light"
             enableSystem
             disableTransitionOnChange
           >

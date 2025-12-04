@@ -24,7 +24,7 @@ export function Footer() {
                   />
                 </svg>
               </div>
-              <span className="text-lg font-semibold">Recallly</span>
+              <span className="font-display text-lg">Recallly</span>
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               The smarter way to study. Build lasting memory with spaced

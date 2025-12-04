@@ -135,15 +135,21 @@ export function FeaturesSection() {
   return (
     <section
       id="features"
-      className="border-t border-border/40 bg-muted/30 py-20 sm:py-28"
+      className="relative border-t border-border/40 bg-linear-to-b from-muted/30 via-muted/50 to-muted/30 py-20 sm:py-28"
     >
-      <div className="container mx-auto max-w-6xl px-4">
+      {/* Decorative Background Elements */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -right-20 top-0 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
+        <div className="absolute -left-20 bottom-0 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
+      </div>
+
+      <div className="container relative mx-auto max-w-6xl px-4">
         {/* Section Header */}
         <div className="mx-auto mb-16 max-w-2xl text-center">
           <span className="mb-4 inline-block text-sm font-medium uppercase tracking-widest text-primary">
             Features
           </span>
-          <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
+          <h2 className="font-display mb-4 text-3xl font-normal tracking-tight sm:text-4xl md:text-5xl">
             Everything you need to learn effectively
           </h2>
           <p className="text-lg text-muted-foreground">
@@ -157,7 +163,7 @@ export function FeaturesSection() {
           {features.map((feature, index) => (
             <Card
               key={index}
-              className={`group relative border-border/50 bg-background/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/20 hover:shadow-lg ${
+              className={`group relative border-border/50 bg-background/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:-translate-y-1 ${
                 feature.comingSoon ? "opacity-75" : ""
               }`}
             >
@@ -171,15 +177,15 @@ export function FeaturesSection() {
               )}
               <CardContent className="p-6">
                 <div
-                  className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg transition-colors ${
+                  className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl transition-all duration-300 ${
                     feature.comingSoon
                       ? "bg-muted text-muted-foreground"
-                      : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
+                      : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground group-hover:scale-110"
                   }`}
                 >
                   {feature.icon}
                 </div>
-                <h3 className="mb-2 text-lg font-semibold">{feature.title}</h3>
+                <h3 className="font-display mb-2 text-xl">{feature.title}</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {feature.description}
                 </p>

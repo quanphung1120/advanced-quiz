@@ -7,6 +7,7 @@ import {
   BarChart3Icon,
   UsersIcon,
   ChevronRightIcon,
+  SparklesIcon,
 } from "lucide-react";
 
 import {
@@ -67,37 +68,47 @@ export function AppSidebar({ collections }: AppSidebarProps) {
     .slice(0, 6);
 
   return (
-    <Sidebar>
+    <Sidebar className="border-r border-border/50">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton
+              size="lg"
+              asChild
+              className="transition-colors hover:bg-primary/10"
+            >
               <Link href="/dashboard" prefetch={false}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/20">
                   <BookOpenIcon className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">Recallly</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="font-display text-base">Recallly</span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     Flashcard Learning
+                    <SparklesIcon className="h-3 w-3 text-primary/60" />
                   </span>
                 </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <CreateCollectionDialog />
       </SidebarHeader>
 
       <SidebarContent>
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={item.title}
+                    className="transition-all hover:bg-primary/10 hover:text-primary data-[active=true]:bg-primary/10 data-[active=true]:text-primary"
+                  >
                     <Link
                       href={item.url}
                       className="flex items-center gap-2"
@@ -108,7 +119,7 @@ export function AppSidebar({ collections }: AppSidebarProps) {
                       {item.comingSoon && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] px-1.5 py-0.5"
+                          className="bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
                         >
                           Soon
                         </Badge>
@@ -123,25 +134,42 @@ export function AppSidebar({ collections }: AppSidebarProps) {
 
         {/* Recent Collections */}
         <SidebarGroup className="flex-1">
-          <SidebarGroupLabel>Recents</SidebarGroupLabel>
-          <SidebarGroupAction title="View All">
+          <SidebarGroupLabel className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70">
+            Recents
+          </SidebarGroupLabel>
+          <SidebarGroupAction
+            title="View All"
+            className="transition-colors hover:bg-primary/10 hover:text-primary"
+          >
             <ChevronRightIcon className="size-4" />
           </SidebarGroupAction>
           <SidebarGroupContent>
             <SidebarMenu>
-              {recentCollections.map((collection) => (
-                <SidebarMenuItem key={collection.id}>
-                  <SidebarMenuButton asChild tooltip={collection.name}>
-                    <Link
-                      href={`/dashboard/collections/${collection.id}`}
-                      prefetch={false}
+              {recentCollections.length === 0 ? (
+                <div className="px-2 py-4 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    No collections yet
+                  </p>
+                </div>
+              ) : (
+                recentCollections.map((collection) => (
+                  <SidebarMenuItem key={collection.id}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={collection.name}
+                      className="transition-all hover:bg-primary/10 hover:text-primary"
                     >
-                      <FolderIcon className="size-4" />
-                      <span className="truncate">{collection.name}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                      <Link
+                        href={`/dashboard/collections/${collection.id}`}
+                        prefetch={false}
+                      >
+                        <FolderIcon className="size-4" />
+                        <span className="truncate">{collection.name}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

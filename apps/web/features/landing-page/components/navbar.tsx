@@ -30,7 +30,7 @@ export function Navbar() {
               />
             </svg>
           </div>
-          <span className="text-lg font-semibold tracking-tight">Recallly</span>
+          <span className="font-display text-lg">Recallly</span>
         </Link>
 
         {/* Navigation Links */}

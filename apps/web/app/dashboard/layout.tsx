@@ -1,4 +1,4 @@
-import { BellIcon } from "lucide-react";
+import { BellIcon, SparklesIcon } from "lucide-react";
 
 import {
   SidebarProvider,
@@ -22,16 +22,23 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar collections={collections} />
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border/50 bg-background px-4">
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border/50 bg-background/95 px-4 backdrop-blur-sm">
           <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
+            <SidebarTrigger className="-ml-1 transition-colors hover:bg-primary/10 hover:text-primary" />
             <Separator orientation="vertical" className="mr-2 h-4" />
-            <h1 className="text-sm font-medium">Dashboard</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-sm font-medium">Dashboard</h1>
+              <SparklesIcon className="h-3.5 w-3.5 text-primary/60" />
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative transition-colors hover:bg-primary/10 hover:text-primary"
+            >
               <BellIcon className="size-5" />
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground shadow-sm">
                 3
               </span>
               <span className="sr-only">Notifications</span>

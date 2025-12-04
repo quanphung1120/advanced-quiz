@@ -5,7 +5,6 @@ import {
   SettingsIcon,
   GlobeIcon,
   HelpCircleIcon,
-  InfoIcon,
   LogOutIcon,
   BellIcon,
   KeyboardIcon,
@@ -23,7 +22,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { ModeSwitcher } from "@/components/mode-switcher";
 
 export function HeaderUserDropdown() {
   const { user, isLoaded } = useUser();
@@ -87,6 +88,16 @@ export function HeaderUserDropdown() {
 
         <DropdownMenuSeparator />
 
+        {/* Theme Switcher */}
+        <div className="px-2 py-2">
+          <DropdownMenuLabel className="px-1 py-1.5 text-xs font-normal text-muted-foreground">
+            Appearance
+          </DropdownMenuLabel>
+          <ModeSwitcher />
+        </div>
+
+        <DropdownMenuSeparator />
+
         {/* Main Actions */}
         <DropdownMenuGroup>
           <DropdownMenuItem
@@ -123,10 +134,6 @@ export function HeaderUserDropdown() {
 
         {/* Preferences (disabled) */}
         <DropdownMenuGroup>
-          <DropdownMenuItem disabled className="gap-3 py-2.5">
-            <InfoIcon className="size-4 text-muted-foreground" />
-            <span>Appearance</span>
-          </DropdownMenuItem>
           <DropdownMenuItem disabled className="gap-3 py-2.5">
             <BellIcon className="size-4 text-muted-foreground" />
             <span>Notifications</span>
