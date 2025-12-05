@@ -14,6 +14,6 @@ type UpdateCollectionRequest struct {
 
 type AddCollaboratorRequest struct {
 	Email  string `json:"email" binding:"required"`
-	UserID string `json:"user_id"` // Optional: for backward compatibility
-	Role   string `json:"role"`    // optional: "viewer", "editor", "admin" (defaults to "viewer")
+	UserID string `json:"user_id"`
+	Role   string `json:"role"`
 }

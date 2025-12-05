@@ -19,7 +19,7 @@ type Collection struct {
 func (Collection) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
-			Default(uuid.New).
+			Default(NewUUIDV7).
 			Immutable(),
 		field.String("name").
 			NotEmpty().

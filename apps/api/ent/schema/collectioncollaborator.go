@@ -18,7 +18,7 @@ type CollectionCollaborator struct {
 func (CollectionCollaborator) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
-			Default(uuid.New).
+			Default(NewUUIDV7).
 			Immutable(),
 		field.UUID("collection_id", uuid.UUID{}),
 		field.String("user_id").

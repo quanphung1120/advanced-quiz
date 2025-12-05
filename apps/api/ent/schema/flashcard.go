@@ -18,7 +18,7 @@ type Flashcard struct {
 func (Flashcard) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
-			Default(uuid.New).
+			Default(NewUUIDV7).
 			Immutable(),
 		field.String("question").
 			NotEmpty(),
