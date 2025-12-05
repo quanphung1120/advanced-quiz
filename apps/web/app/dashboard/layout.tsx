@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { BellIcon, SparklesIcon } from "lucide-react";
 
 import {
@@ -10,17 +11,47 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { getCollections } from "@/features/collections/service/api";
 import { HeaderUserDropdown } from "@/features/dashboard/components/header-user-dropdown";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function DashboardLayout({
+async function SidebarWithCollections() {
+  const collections = await getCollections();
+  return <AppSidebar collections={collections} />;
+}
+
+function SidebarSkeleton() {
+  return (
+    <div className="flex h-full w-64 flex-col border-r border-border/50 bg-background">
+      <div className="p-4">
+        <Skeleton className="h-12 w-full" />
+      </div>
+      <div className="flex-1 space-y-4 p-4">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const collections = await getCollections();
-
   return (
     <SidebarProvider>
-      <AppSidebar collections={collections} />
+      <Suspense fallback={<SidebarSkeleton />}>
+        <SidebarWithCollections />
+      </Suspense>
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border/50 bg-background/95 px-4 backdrop-blur-sm">
           <div className="flex items-center gap-2">

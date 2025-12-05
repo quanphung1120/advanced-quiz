@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { Collection, GetCollectionResponse } from "@/types/collection";
 import { auth } from "@clerk/nextjs/server";
 
@@ -7,7 +8,7 @@ interface GetMyCollectionsResponse {
   errorMessage: string;
 }
 
-export async function getCollections(): Promise<Collection[]> {
+export const getCollections = cache(async (): Promise<Collection[]> => {
   const { getToken, isAuthenticated } = await auth();
 
   if (!getToken || !isAuthenticated) {
@@ -45,7 +46,7 @@ export async function getCollections(): Promise<Collection[]> {
   } catch {
     return [];
   }
-}
+});
 
 export async function getMyCollections(): Promise<{
   owned: Collection[];
