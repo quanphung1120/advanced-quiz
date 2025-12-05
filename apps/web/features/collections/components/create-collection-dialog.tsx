@@ -130,12 +130,6 @@ export function CreateCollectionDialog({
               )}
             />
 
-            {form.formState.errors.root && (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.root.message}
-              </p>
-            )}
-
             <Controller
               name="is_public"
               control={form.control}
@@ -156,6 +150,12 @@ export function CreateCollectionDialog({
                 </Field>
               )}
             />
+
+            {form.formState.errors.root && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.root.message}
+              </p>
+            )}
           </div>
 
           <DialogFooter>
