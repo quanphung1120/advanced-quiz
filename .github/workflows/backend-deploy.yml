@@ -6,14 +6,12 @@ on:
       - main
     paths:
       - "apps/api/**"
-      - "apps/api/src/**"
       - ".github/workflows/backend-deploy.yml" # Rebuild if workflow changes
   pull_request:
     branches:
       - main
     paths:
       - "apps/api/**"
-      - "apps/api/src/**"
   workflow_dispatch:
 
 env:

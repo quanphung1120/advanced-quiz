@@ -20,7 +20,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags='-w -s' \
     -trimpath \
-    -o main .
+    -o main ./cmd/server
+
 
 # Final stage - optimized Alpine
 FROM alpine:latest

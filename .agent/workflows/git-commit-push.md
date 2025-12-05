@@ -5,10 +5,12 @@ description: Git Commit and Push Workflow
 1. Check git status
    - Run `git status` to see what has changed.
 
-2. Stage changes
+2. Check for what have been changed by read the changed files.
+
+3. Stage changes
    - Run `git add .` to stage all changes.
 
-3. Commit changes
+4. Commit changes
    - Run `git commit -m "<type>(<optional scope>): <description>"`
    - **Format**: `<type>(<optional scope>): <description>`
    - **Types**:
@@ -26,5 +28,5 @@ description: Git Commit and Push Workflow
    - **Description**: Concise description in imperative, present tense (e.g. "change" not "changed"). No period at the end.
    - **Breaking Changes**: Add `!` before the colon, e.g. `feat!: remove status endpoint`.
 
-4. Push to remote
+5. Push to remote
    - Run `git push` to push the changes to the remote repository.
