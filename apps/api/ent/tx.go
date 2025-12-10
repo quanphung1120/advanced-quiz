@@ -18,6 +18,8 @@ type Tx struct {
 	CollectionCollaborator *CollectionCollaboratorClient
 	// Flashcard is the client for interacting with the Flashcard builders.
 	Flashcard *FlashcardClient
+	// FlashcardReview is the client for interacting with the FlashcardReview builders.
+	FlashcardReview *FlashcardReviewClient
 
 	// lazily loaded.
 	client     *Client
@@ -152,6 +154,7 @@ func (tx *Tx) init() {
 	tx.Collection = NewCollectionClient(tx.config)
 	tx.CollectionCollaborator = NewCollectionCollaboratorClient(tx.config)
 	tx.Flashcard = NewFlashcardClient(tx.config)
+	tx.FlashcardReview = NewFlashcardReviewClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

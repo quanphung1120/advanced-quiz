@@ -31,6 +31,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeCollection holds the string denoting the collection edge name in mutations.
 	EdgeCollection = "collection"
+	// EdgeReviews holds the string denoting the reviews edge name in mutations.
+	EdgeReviews = "reviews"
 	// Table holds the table name of the flashcard in the database.
 	Table = "flashcards"
 	// CollectionTable is the table that holds the collection relation/edge.
@@ -40,6 +42,13 @@ const (
 	CollectionInverseTable = "collections"
 	// CollectionColumn is the table column denoting the collection relation/edge.
 	CollectionColumn = "collection_id"
+	// ReviewsTable is the table that holds the reviews relation/edge.
+	ReviewsTable = "flashcard_reviews"
+	// ReviewsInverseTable is the table name for the FlashcardReview entity.
+	// It exists in this package in order to avoid circular dependency with the "flashcardreview" package.
+	ReviewsInverseTable = "flashcard_reviews"
+	// ReviewsColumn is the table column denoting the reviews relation/edge.
+	ReviewsColumn = "flashcard_id"
 )
 
 // Columns holds all SQL columns for flashcard fields.
@@ -134,10 +143,31 @@ func ByCollectionField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newCollectionStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByReviewsCount orders the results by reviews count.
+func ByReviewsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newReviewsStep(), opts...)
+	}
+}
+
+// ByReviews orders the results by reviews terms.
+func ByReviews(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newReviewsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newCollectionStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(CollectionInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, CollectionTable, CollectionColumn),
+	)
+}
+func newReviewsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ReviewsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ReviewsTable, ReviewsColumn),
 	)
 }

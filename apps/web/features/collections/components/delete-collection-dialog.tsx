@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { deleteCollection } from "../service/actions";
-import type { Collection } from "@/types/collection";
+import type { Collection } from "../service/api";
 
 interface DeleteCollectionDialogProps {
   collection: Collection;

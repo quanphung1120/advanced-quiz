@@ -62,34 +62,35 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false # Reduces image size, optional
 
-      - name: Connect to Tailscale
-        if: github.event_name != 'pull_request'
-        uses: tailscale/github-action@v4
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:ci
 
-      - name: Deploy to VPS
-        if: github.event_name != 'pull_request'
-        run: |
-          ssh -o StrictHostKeyChecking=accept-new \
-              -o ConnectTimeout=10 \
-              ubuntu@backend-server-01 << 'DEPLOY_SCRIPT'
-            set -e
-            
-            cd /home/ubuntu/servers/traefik-proxy
-            
-            echo "🔄 Pulling latest image..."
-            sudo docker compose pull golang-api
-            
-            echo "🚀 Deploying golang-api..."
-            sudo docker compose up -d --no-deps --wait --wait-timeout 60 golang-api
-            
-            echo "🧹 Cleaning up old images..."
-            sudo docker image prune -f
-            
-            echo "✅ Deployment successful!"
-            sudo docker compose ps golang-api
-            sudo docker compose logs --tail=20 golang-api
-          DEPLOY_SCRIPT
+      # - name: Connect to Tailscale
+      #   if: github.event_name != 'pull_request'
+      #   uses: tailscale/github-action@v4
+      #   with:
+      #     oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      #     oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+      #     tags: tag:ci
+
+      # - name: Deploy to VPS
+      #   if: github.event_name != 'pull_request'
+      #   run: |
+      #     ssh -o StrictHostKeyChecking=accept-new \
+      #         -o ConnectTimeout=10 \
+      #         ubuntu@backend-server-01 << 'DEPLOY_SCRIPT'
+      #       set -e
+
+      #       cd /home/ubuntu/servers/traefik-proxy
+
+      #       echo "🔄 Pulling latest image..."
+      #       sudo docker compose pull golang-api
+
+      #       echo "🚀 Deploying golang-api..."
+      #       sudo docker compose up -d --no-deps --wait --wait-timeout 60 golang-api
+
+      #       echo "🧹 Cleaning up old images..."
+      #       sudo docker image prune -f
+
+      #       echo "✅ Deployment successful!"
+      #       sudo docker compose ps golang-api
+      #       sudo docker compose logs --tail=20 golang-api
+      #     DEPLOY_SCRIPT

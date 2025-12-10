@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CollectionCollaborator } from "@/types/collection";
+import type { CollectionCollaborator } from "../service/api";
 import { removeCollaborator } from "../service/actions";
 import { AddCollaboratorDialog } from "./add-collaborator-dialog";
 

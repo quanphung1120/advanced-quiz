@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Flashcard } from "@/types/flashcard";
+import type { Flashcard } from "../service/api";
 import { FlashcardPreviewCard } from "./flashcard-preview-card";
 
 interface FlashcardsPreviewProps {

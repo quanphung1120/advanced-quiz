@@ -19,6 +19,7 @@ import (
 	"github.com/quanphung1120/advanced-quiz-be/ent/collection"
 	"github.com/quanphung1120/advanced-quiz-be/ent/collectioncollaborator"
 	"github.com/quanphung1120/advanced-quiz-be/ent/flashcard"
+	"github.com/quanphung1120/advanced-quiz-be/ent/flashcardreview"
 )
 
 // Client is the client that holds all ent builders.
@@ -32,6 +33,8 @@ type Client struct {
 	CollectionCollaborator *CollectionCollaboratorClient
 	// Flashcard is the client for interacting with the Flashcard builders.
 	Flashcard *FlashcardClient
+	// FlashcardReview is the client for interacting with the FlashcardReview builders.
+	FlashcardReview *FlashcardReviewClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -46,6 +49,7 @@ func (c *Client) init() {
 	c.Collection = NewCollectionClient(c.config)
 	c.CollectionCollaborator = NewCollectionCollaboratorClient(c.config)
 	c.Flashcard = NewFlashcardClient(c.config)
+	c.FlashcardReview = NewFlashcardReviewClient(c.config)
 }
 
 type (
@@ -141,6 +145,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Collection:             NewCollectionClient(cfg),
 		CollectionCollaborator: NewCollectionCollaboratorClient(cfg),
 		Flashcard:              NewFlashcardClient(cfg),
+		FlashcardReview:        NewFlashcardReviewClient(cfg),
 	}, nil
 }
 
@@ -163,6 +168,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Collection:             NewCollectionClient(cfg),
 		CollectionCollaborator: NewCollectionCollaboratorClient(cfg),
 		Flashcard:              NewFlashcardClient(cfg),
+		FlashcardReview:        NewFlashcardReviewClient(cfg),
 	}, nil
 }
 
@@ -194,6 +200,7 @@ func (c *Client) Use(hooks ...Hook) {
 	c.Collection.Use(hooks...)
 	c.CollectionCollaborator.Use(hooks...)
 	c.Flashcard.Use(hooks...)
+	c.FlashcardReview.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
@@ -202,6 +209,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Collection.Intercept(interceptors...)
 	c.CollectionCollaborator.Intercept(interceptors...)
 	c.Flashcard.Intercept(interceptors...)
+	c.FlashcardReview.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -213,6 +221,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.CollectionCollaborator.mutate(ctx, m)
 	case *FlashcardMutation:
 		return c.Flashcard.mutate(ctx, m)
+	case *FlashcardReviewMutation:
+		return c.FlashcardReview.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -656,6 +666,22 @@ func (c *FlashcardClient) QueryCollection(_m *Flashcard) *CollectionQuery {
 	return query
 }
 
+// QueryReviews queries the reviews edge of a Flashcard.
+func (c *FlashcardClient) QueryReviews(_m *Flashcard) *FlashcardReviewQuery {
+	query := (&FlashcardReviewClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(flashcard.Table, flashcard.FieldID, id),
+			sqlgraph.To(flashcardreview.Table, flashcardreview.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, flashcard.ReviewsTable, flashcard.ReviewsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *FlashcardClient) Hooks() []Hook {
 	return c.hooks.Flashcard
@@ -681,12 +707,161 @@ func (c *FlashcardClient) mutate(ctx context.Context, m *FlashcardMutation) (Val
 	}
 }
 
+// FlashcardReviewClient is a client for the FlashcardReview schema.
+type FlashcardReviewClient struct {
+	config
+}
+
+// NewFlashcardReviewClient returns a client for the FlashcardReview from the given config.
+func NewFlashcardReviewClient(c config) *FlashcardReviewClient {
+	return &FlashcardReviewClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `flashcardreview.Hooks(f(g(h())))`.
+func (c *FlashcardReviewClient) Use(hooks ...Hook) {
+	c.hooks.FlashcardReview = append(c.hooks.FlashcardReview, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `flashcardreview.Intercept(f(g(h())))`.
+func (c *FlashcardReviewClient) Intercept(interceptors ...Interceptor) {
+	c.inters.FlashcardReview = append(c.inters.FlashcardReview, interceptors...)
+}
+
+// Create returns a builder for creating a FlashcardReview entity.
+func (c *FlashcardReviewClient) Create() *FlashcardReviewCreate {
+	mutation := newFlashcardReviewMutation(c.config, OpCreate)
+	return &FlashcardReviewCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of FlashcardReview entities.
+func (c *FlashcardReviewClient) CreateBulk(builders ...*FlashcardReviewCreate) *FlashcardReviewCreateBulk {
+	return &FlashcardReviewCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *FlashcardReviewClient) MapCreateBulk(slice any, setFunc func(*FlashcardReviewCreate, int)) *FlashcardReviewCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &FlashcardReviewCreateBulk{err: fmt.Errorf("calling to FlashcardReviewClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*FlashcardReviewCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &FlashcardReviewCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for FlashcardReview.
+func (c *FlashcardReviewClient) Update() *FlashcardReviewUpdate {
+	mutation := newFlashcardReviewMutation(c.config, OpUpdate)
+	return &FlashcardReviewUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *FlashcardReviewClient) UpdateOne(_m *FlashcardReview) *FlashcardReviewUpdateOne {
+	mutation := newFlashcardReviewMutation(c.config, OpUpdateOne, withFlashcardReview(_m))
+	return &FlashcardReviewUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *FlashcardReviewClient) UpdateOneID(id uuid.UUID) *FlashcardReviewUpdateOne {
+	mutation := newFlashcardReviewMutation(c.config, OpUpdateOne, withFlashcardReviewID(id))
+	return &FlashcardReviewUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for FlashcardReview.
+func (c *FlashcardReviewClient) Delete() *FlashcardReviewDelete {
+	mutation := newFlashcardReviewMutation(c.config, OpDelete)
+	return &FlashcardReviewDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *FlashcardReviewClient) DeleteOne(_m *FlashcardReview) *FlashcardReviewDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *FlashcardReviewClient) DeleteOneID(id uuid.UUID) *FlashcardReviewDeleteOne {
+	builder := c.Delete().Where(flashcardreview.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &FlashcardReviewDeleteOne{builder}
+}
+
+// Query returns a query builder for FlashcardReview.
+func (c *FlashcardReviewClient) Query() *FlashcardReviewQuery {
+	return &FlashcardReviewQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeFlashcardReview},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a FlashcardReview entity by its id.
+func (c *FlashcardReviewClient) Get(ctx context.Context, id uuid.UUID) (*FlashcardReview, error) {
+	return c.Query().Where(flashcardreview.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *FlashcardReviewClient) GetX(ctx context.Context, id uuid.UUID) *FlashcardReview {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryFlashcard queries the flashcard edge of a FlashcardReview.
+func (c *FlashcardReviewClient) QueryFlashcard(_m *FlashcardReview) *FlashcardQuery {
+	query := (&FlashcardClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(flashcardreview.Table, flashcardreview.FieldID, id),
+			sqlgraph.To(flashcard.Table, flashcard.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, flashcardreview.FlashcardTable, flashcardreview.FlashcardColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *FlashcardReviewClient) Hooks() []Hook {
+	return c.hooks.FlashcardReview
+}
+
+// Interceptors returns the client interceptors.
+func (c *FlashcardReviewClient) Interceptors() []Interceptor {
+	return c.inters.FlashcardReview
+}
+
+func (c *FlashcardReviewClient) mutate(ctx context.Context, m *FlashcardReviewMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&FlashcardReviewCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&FlashcardReviewUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&FlashcardReviewUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&FlashcardReviewDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown FlashcardReview mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Collection, CollectionCollaborator, Flashcard []ent.Hook
+		Collection, CollectionCollaborator, Flashcard, FlashcardReview []ent.Hook
 	}
 	inters struct {
-		Collection, CollectionCollaborator, Flashcard []ent.Interceptor
+		Collection, CollectionCollaborator, Flashcard, FlashcardReview []ent.Interceptor
 	}
 )

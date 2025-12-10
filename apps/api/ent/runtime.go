@@ -9,6 +9,7 @@ import (
 	"github.com/quanphung1120/advanced-quiz-be/ent/collection"
 	"github.com/quanphung1120/advanced-quiz-be/ent/collectioncollaborator"
 	"github.com/quanphung1120/advanced-quiz-be/ent/flashcard"
+	"github.com/quanphung1120/advanced-quiz-be/ent/flashcardreview"
 	"github.com/quanphung1120/advanced-quiz-be/ent/schema"
 )
 
@@ -158,4 +159,72 @@ func init() {
 	flashcardDescID := flashcardFields[0].Descriptor()
 	// flashcard.DefaultID holds the default value on creation for the id field.
 	flashcard.DefaultID = flashcardDescID.Default.(func() uuid.UUID)
+	flashcardreviewFields := schema.FlashcardReview{}.Fields()
+	_ = flashcardreviewFields
+	// flashcardreviewDescUserID is the schema descriptor for user_id field.
+	flashcardreviewDescUserID := flashcardreviewFields[1].Descriptor()
+	// flashcardreview.UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
+	flashcardreview.UserIDValidator = func() func(string) error {
+		validators := flashcardreviewDescUserID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(user_id string) error {
+			for _, fn := range fns {
+				if err := fn(user_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// flashcardreviewDescEaseFactor is the schema descriptor for ease_factor field.
+	flashcardreviewDescEaseFactor := flashcardreviewFields[3].Descriptor()
+	// flashcardreview.DefaultEaseFactor holds the default value on creation for the ease_factor field.
+	flashcardreview.DefaultEaseFactor = flashcardreviewDescEaseFactor.Default.(float64)
+	// flashcardreview.EaseFactorValidator is a validator for the "ease_factor" field. It is called by the builders before save.
+	flashcardreview.EaseFactorValidator = flashcardreviewDescEaseFactor.Validators[0].(func(float64) error)
+	// flashcardreviewDescInterval is the schema descriptor for interval field.
+	flashcardreviewDescInterval := flashcardreviewFields[4].Descriptor()
+	// flashcardreview.DefaultInterval holds the default value on creation for the interval field.
+	flashcardreview.DefaultInterval = flashcardreviewDescInterval.Default.(int)
+	// flashcardreview.IntervalValidator is a validator for the "interval" field. It is called by the builders before save.
+	flashcardreview.IntervalValidator = flashcardreviewDescInterval.Validators[0].(func(int) error)
+	// flashcardreviewDescDueAt is the schema descriptor for due_at field.
+	flashcardreviewDescDueAt := flashcardreviewFields[5].Descriptor()
+	// flashcardreview.DefaultDueAt holds the default value on creation for the due_at field.
+	flashcardreview.DefaultDueAt = flashcardreviewDescDueAt.Default.(func() time.Time)
+	// flashcardreviewDescLearningStep is the schema descriptor for learning_step field.
+	flashcardreviewDescLearningStep := flashcardreviewFields[7].Descriptor()
+	// flashcardreview.DefaultLearningStep holds the default value on creation for the learning_step field.
+	flashcardreview.DefaultLearningStep = flashcardreviewDescLearningStep.Default.(int)
+	// flashcardreview.LearningStepValidator is a validator for the "learning_step" field. It is called by the builders before save.
+	flashcardreview.LearningStepValidator = flashcardreviewDescLearningStep.Validators[0].(func(int) error)
+	// flashcardreviewDescReviewCount is the schema descriptor for review_count field.
+	flashcardreviewDescReviewCount := flashcardreviewFields[8].Descriptor()
+	// flashcardreview.DefaultReviewCount holds the default value on creation for the review_count field.
+	flashcardreview.DefaultReviewCount = flashcardreviewDescReviewCount.Default.(int)
+	// flashcardreview.ReviewCountValidator is a validator for the "review_count" field. It is called by the builders before save.
+	flashcardreview.ReviewCountValidator = flashcardreviewDescReviewCount.Validators[0].(func(int) error)
+	// flashcardreviewDescLapseCount is the schema descriptor for lapse_count field.
+	flashcardreviewDescLapseCount := flashcardreviewFields[9].Descriptor()
+	// flashcardreview.DefaultLapseCount holds the default value on creation for the lapse_count field.
+	flashcardreview.DefaultLapseCount = flashcardreviewDescLapseCount.Default.(int)
+	// flashcardreview.LapseCountValidator is a validator for the "lapse_count" field. It is called by the builders before save.
+	flashcardreview.LapseCountValidator = flashcardreviewDescLapseCount.Validators[0].(func(int) error)
+	// flashcardreviewDescCreatedAt is the schema descriptor for created_at field.
+	flashcardreviewDescCreatedAt := flashcardreviewFields[11].Descriptor()
+	// flashcardreview.DefaultCreatedAt holds the default value on creation for the created_at field.
+	flashcardreview.DefaultCreatedAt = flashcardreviewDescCreatedAt.Default.(func() time.Time)
+	// flashcardreviewDescUpdatedAt is the schema descriptor for updated_at field.
+	flashcardreviewDescUpdatedAt := flashcardreviewFields[12].Descriptor()
+	// flashcardreview.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	flashcardreview.DefaultUpdatedAt = flashcardreviewDescUpdatedAt.Default.(func() time.Time)
+	// flashcardreview.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	flashcardreview.UpdateDefaultUpdatedAt = flashcardreviewDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// flashcardreviewDescID is the schema descriptor for id field.
+	flashcardreviewDescID := flashcardreviewFields[0].Descriptor()
+	// flashcardreview.DefaultID holds the default value on creation for the id field.
+	flashcardreview.DefaultID = flashcardreviewDescID.Default.(func() uuid.UUID)
 }

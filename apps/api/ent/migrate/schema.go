@@ -26,7 +26,7 @@ var (
 		Indexes: []*schema.Index{
 			{
 				Name:    "collection_owner_id",
-				Unique:  true,
+				Unique:  false,
 				Columns: []*schema.Column{CollectionsColumns[3]},
 			},
 		},
@@ -78,15 +78,64 @@ var (
 			},
 		},
 	}
+	// FlashcardReviewsColumns holds the columns for the "flashcard_reviews" table.
+	FlashcardReviewsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "user_id", Type: field.TypeString, Size: 255},
+		{Name: "ease_factor", Type: field.TypeFloat64, Default: 2.5},
+		{Name: "interval", Type: field.TypeInt, Default: 0},
+		{Name: "due_at", Type: field.TypeTime},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"new", "learning", "review", "relearning"}, Default: "new"},
+		{Name: "learning_step", Type: field.TypeInt, Default: 0},
+		{Name: "review_count", Type: field.TypeInt, Default: 0},
+		{Name: "lapse_count", Type: field.TypeInt, Default: 0},
+		{Name: "last_reviewed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "flashcard_id", Type: field.TypeUUID},
+	}
+	// FlashcardReviewsTable holds the schema information for the "flashcard_reviews" table.
+	FlashcardReviewsTable = &schema.Table{
+		Name:       "flashcard_reviews",
+		Columns:    FlashcardReviewsColumns,
+		PrimaryKey: []*schema.Column{FlashcardReviewsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "flashcard_reviews_flashcards_reviews",
+				Columns:    []*schema.Column{FlashcardReviewsColumns[12]},
+				RefColumns: []*schema.Column{FlashcardsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "flashcardreview_user_id_flashcard_id",
+				Unique:  true,
+				Columns: []*schema.Column{FlashcardReviewsColumns[1], FlashcardReviewsColumns[12]},
+			},
+			{
+				Name:    "flashcardreview_user_id_due_at",
+				Unique:  false,
+				Columns: []*schema.Column{FlashcardReviewsColumns[1], FlashcardReviewsColumns[4]},
+			},
+			{
+				Name:    "flashcardreview_user_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{FlashcardReviewsColumns[1], FlashcardReviewsColumns[5]},
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		CollectionsTable,
 		CollectionCollaboratorsTable,
 		FlashcardsTable,
+		FlashcardReviewsTable,
 	}
 )
 
 func init() {
 	CollectionCollaboratorsTable.ForeignKeys[0].RefTable = CollectionsTable
 	FlashcardsTable.ForeignKeys[0].RefTable = CollectionsTable
+	FlashcardReviewsTable.ForeignKeys[0].RefTable = FlashcardsTable
 }

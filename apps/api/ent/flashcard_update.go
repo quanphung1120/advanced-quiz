@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/quanphung1120/advanced-quiz-be/ent/collection"
 	"github.com/quanphung1120/advanced-quiz-be/ent/flashcard"
+	"github.com/quanphung1120/advanced-quiz-be/ent/flashcardreview"
 	"github.com/quanphung1120/advanced-quiz-be/ent/predicate"
 )
 
@@ -111,6 +112,21 @@ func (_u *FlashcardUpdate) SetCollection(v *Collection) *FlashcardUpdate {
 	return _u.SetCollectionID(v.ID)
 }
 
+// AddReviewIDs adds the "reviews" edge to the FlashcardReview entity by IDs.
+func (_u *FlashcardUpdate) AddReviewIDs(ids ...uuid.UUID) *FlashcardUpdate {
+	_u.mutation.AddReviewIDs(ids...)
+	return _u
+}
+
+// AddReviews adds the "reviews" edges to the FlashcardReview entity.
+func (_u *FlashcardUpdate) AddReviews(v ...*FlashcardReview) *FlashcardUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddReviewIDs(ids...)
+}
+
 // Mutation returns the FlashcardMutation object of the builder.
 func (_u *FlashcardUpdate) Mutation() *FlashcardMutation {
 	return _u.mutation
@@ -120,6 +136,27 @@ func (_u *FlashcardUpdate) Mutation() *FlashcardMutation {
 func (_u *FlashcardUpdate) ClearCollection() *FlashcardUpdate {
 	_u.mutation.ClearCollection()
 	return _u
+}
+
+// ClearReviews clears all "reviews" edges to the FlashcardReview entity.
+func (_u *FlashcardUpdate) ClearReviews() *FlashcardUpdate {
+	_u.mutation.ClearReviews()
+	return _u
+}
+
+// RemoveReviewIDs removes the "reviews" edge to FlashcardReview entities by IDs.
+func (_u *FlashcardUpdate) RemoveReviewIDs(ids ...uuid.UUID) *FlashcardUpdate {
+	_u.mutation.RemoveReviewIDs(ids...)
+	return _u
+}
+
+// RemoveReviews removes "reviews" edges to FlashcardReview entities.
+func (_u *FlashcardUpdate) RemoveReviews(v ...*FlashcardReview) *FlashcardUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveReviewIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -242,6 +279,51 @@ func (_u *FlashcardUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   flashcard.ReviewsTable,
+			Columns: []string{flashcard.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(flashcardreview.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedReviewsIDs(); len(nodes) > 0 && !_u.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   flashcard.ReviewsTable,
+			Columns: []string{flashcard.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(flashcardreview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ReviewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   flashcard.ReviewsTable,
+			Columns: []string{flashcard.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(flashcardreview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{flashcard.Label}
@@ -343,6 +425,21 @@ func (_u *FlashcardUpdateOne) SetCollection(v *Collection) *FlashcardUpdateOne {
 	return _u.SetCollectionID(v.ID)
 }
 
+// AddReviewIDs adds the "reviews" edge to the FlashcardReview entity by IDs.
+func (_u *FlashcardUpdateOne) AddReviewIDs(ids ...uuid.UUID) *FlashcardUpdateOne {
+	_u.mutation.AddReviewIDs(ids...)
+	return _u
+}
+
+// AddReviews adds the "reviews" edges to the FlashcardReview entity.
+func (_u *FlashcardUpdateOne) AddReviews(v ...*FlashcardReview) *FlashcardUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddReviewIDs(ids...)
+}
+
 // Mutation returns the FlashcardMutation object of the builder.
 func (_u *FlashcardUpdateOne) Mutation() *FlashcardMutation {
 	return _u.mutation
@@ -352,6 +449,27 @@ func (_u *FlashcardUpdateOne) Mutation() *FlashcardMutation {
 func (_u *FlashcardUpdateOne) ClearCollection() *FlashcardUpdateOne {
 	_u.mutation.ClearCollection()
 	return _u
+}
+
+// ClearReviews clears all "reviews" edges to the FlashcardReview entity.
+func (_u *FlashcardUpdateOne) ClearReviews() *FlashcardUpdateOne {
+	_u.mutation.ClearReviews()
+	return _u
+}
+
+// RemoveReviewIDs removes the "reviews" edge to FlashcardReview entities by IDs.
+func (_u *FlashcardUpdateOne) RemoveReviewIDs(ids ...uuid.UUID) *FlashcardUpdateOne {
+	_u.mutation.RemoveReviewIDs(ids...)
+	return _u
+}
+
+// RemoveReviews removes "reviews" edges to FlashcardReview entities.
+func (_u *FlashcardUpdateOne) RemoveReviews(v ...*FlashcardReview) *FlashcardUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveReviewIDs(ids...)
 }
 
 // Where appends a list predicates to the FlashcardUpdate builder.
@@ -497,6 +615,51 @@ func (_u *FlashcardUpdateOne) sqlSave(ctx context.Context) (_node *Flashcard, er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(collection.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   flashcard.ReviewsTable,
+			Columns: []string{flashcard.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(flashcardreview.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedReviewsIDs(); len(nodes) > 0 && !_u.mutation.ReviewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   flashcard.ReviewsTable,
+			Columns: []string{flashcard.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(flashcardreview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ReviewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   flashcard.ReviewsTable,
+			Columns: []string{flashcard.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(flashcardreview.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

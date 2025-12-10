@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/quanphung1120/advanced-quiz-be/ent/collection"
 	"github.com/quanphung1120/advanced-quiz-be/ent/flashcard"
+	"github.com/quanphung1120/advanced-quiz-be/ent/flashcardreview"
 	"github.com/quanphung1120/advanced-quiz-be/ent/predicate"
 )
 
@@ -25,6 +27,7 @@ type FlashcardQuery struct {
 	inters         []Interceptor
 	predicates     []predicate.Flashcard
 	withCollection *CollectionQuery
+	withReviews    *FlashcardReviewQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -76,6 +79,28 @@ func (_q *FlashcardQuery) QueryCollection() *CollectionQuery {
 			sqlgraph.From(flashcard.Table, flashcard.FieldID, selector),
 			sqlgraph.To(collection.Table, collection.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, flashcard.CollectionTable, flashcard.CollectionColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryReviews chains the current query on the "reviews" edge.
+func (_q *FlashcardQuery) QueryReviews() *FlashcardReviewQuery {
+	query := (&FlashcardReviewClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(flashcard.Table, flashcard.FieldID, selector),
+			sqlgraph.To(flashcardreview.Table, flashcardreview.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, flashcard.ReviewsTable, flashcard.ReviewsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -276,6 +301,7 @@ func (_q *FlashcardQuery) Clone() *FlashcardQuery {
 		inters:         append([]Interceptor{}, _q.inters...),
 		predicates:     append([]predicate.Flashcard{}, _q.predicates...),
 		withCollection: _q.withCollection.Clone(),
+		withReviews:    _q.withReviews.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -290,6 +316,17 @@ func (_q *FlashcardQuery) WithCollection(opts ...func(*CollectionQuery)) *Flashc
 		opt(query)
 	}
 	_q.withCollection = query
+	return _q
+}
+
+// WithReviews tells the query-builder to eager-load the nodes that are connected to
+// the "reviews" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *FlashcardQuery) WithReviews(opts ...func(*FlashcardReviewQuery)) *FlashcardQuery {
+	query := (&FlashcardReviewClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withReviews = query
 	return _q
 }
 
@@ -371,8 +408,9 @@ func (_q *FlashcardQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Fl
 	var (
 		nodes       = []*Flashcard{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withCollection != nil,
+			_q.withReviews != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -396,6 +434,13 @@ func (_q *FlashcardQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Fl
 	if query := _q.withCollection; query != nil {
 		if err := _q.loadCollection(ctx, query, nodes, nil,
 			func(n *Flashcard, e *Collection) { n.Edges.Collection = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withReviews; query != nil {
+		if err := _q.loadReviews(ctx, query, nodes,
+			func(n *Flashcard) { n.Edges.Reviews = []*FlashcardReview{} },
+			func(n *Flashcard, e *FlashcardReview) { n.Edges.Reviews = append(n.Edges.Reviews, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -428,6 +473,36 @@ func (_q *FlashcardQuery) loadCollection(ctx context.Context, query *CollectionQ
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (_q *FlashcardQuery) loadReviews(ctx context.Context, query *FlashcardReviewQuery, nodes []*Flashcard, init func(*Flashcard), assign func(*Flashcard, *FlashcardReview)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Flashcard)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(flashcardreview.FieldFlashcardID)
+	}
+	query.Where(predicate.FlashcardReview(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(flashcard.ReviewsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.FlashcardID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "flashcard_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, ChevronLeft, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { FlipCard } from "@/features/flashcards/components/flip-card";
-import { Flashcard } from "@/types/flashcard";
+import type { Flashcard } from "@/features/flashcards/service/api";
 
 interface LearningCarouselClientProps {
   collectionId: string;

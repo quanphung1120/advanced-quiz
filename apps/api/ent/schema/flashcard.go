@@ -48,5 +48,7 @@ func (Flashcard) Edges() []ent.Edge {
 			Unique().
 			Required().
 			Field("collection_id"),
+		edge.To("reviews", FlashcardReview.Type).
+			Comment("Reviews for this flashcard across different users"),
 	}
 }

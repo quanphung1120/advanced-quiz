@@ -1,7 +1,4 @@
 {
-  "eslint.workingDirectories": [
-    {
-      "mode": "auto"
-    }
-  ]
+  "eslint.workingDirectories": ["./apps/web"],
+  "eslint.useFlatConfig": true
 }

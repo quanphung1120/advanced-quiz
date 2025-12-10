@@ -1,9 +1,48 @@
-import {
-  Flashcard,
-  GetFlashcardsResponse,
-  GetFlashcardResponse,
-} from "@/types/flashcard";
 import { auth } from "@clerk/nextjs/server";
+import { z } from "zod";
+
+// ============================================================
+// Zod Schemas
+// ============================================================
+
+const FlashcardSchema = z.object({
+  id: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  question: z.string(),
+  answer: z.string(),
+  type: z.enum(["simple", "multiple_choice"]),
+  collection_id: z.string(),
+  created_by: z.string(),
+});
+
+const GetFlashcardsResponseSchema = z.object({
+  flashcards: z.array(FlashcardSchema).nullable(),
+  role: z.enum(["owner", "editor", "viewer"]).optional(),
+  errorMessage: z.string().optional(),
+});
+
+const GetFlashcardResponseSchema = z.object({
+  flashcard: FlashcardSchema.nullable(),
+  role: z.enum(["owner", "editor", "viewer"]).optional(),
+  errorMessage: z.string().optional(),
+});
+
+// ============================================================
+// Types (inferred from Zod schemas)
+// ============================================================
+
+export type Flashcard = z.infer<typeof FlashcardSchema>;
+
+// ============================================================
+// API Configuration
+// ============================================================
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+// ============================================================
+// API Functions
+// ============================================================
 
 export async function getCollectionFlashcards(collectionId: string): Promise<{
   flashcards: Flashcard[];
@@ -23,7 +62,7 @@ export async function getCollectionFlashcards(collectionId: string): Promise<{
 
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/collections/${collectionId}/flashcards`,
+      `${API_BASE_URL}/api/v1/collections/${collectionId}/flashcards`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -37,10 +76,20 @@ export async function getCollectionFlashcards(collectionId: string): Promise<{
       return { flashcards: [], role: null };
     }
 
-    const data: GetFlashcardsResponse = await response.json();
+    const json = await response.json();
+    const parsed = GetFlashcardsResponseSchema.safeParse(json);
+
+    if (!parsed.success) {
+      console.error(
+        "Failed to parse getCollectionFlashcards response:",
+        parsed.error
+      );
+      return { flashcards: [], role: null };
+    }
+
     return {
-      flashcards: data.flashcards || [],
-      role: data.role || null,
+      flashcards: parsed.data.flashcards || [],
+      role: parsed.data.role || null,
     };
   } catch {
     return { flashcards: [], role: null };
@@ -68,7 +117,7 @@ export async function getFlashcard(
 
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/collections/${collectionId}/flashcards/${flashcardId}`,
+      `${API_BASE_URL}/api/v1/collections/${collectionId}/flashcards/${flashcardId}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -81,10 +130,17 @@ export async function getFlashcard(
       return { flashcard: null, role: null };
     }
 
-    const data: GetFlashcardResponse = await response.json();
+    const json = await response.json();
+    const parsed = GetFlashcardResponseSchema.safeParse(json);
+
+    if (!parsed.success) {
+      console.error("Failed to parse getFlashcard response:", parsed.error);
+      return { flashcard: null, role: null };
+    }
+
     return {
-      flashcard: data.flashcard || null,
-      role: data.role || null,
+      flashcard: parsed.data.flashcard || null,
+      role: parsed.data.role || null,
     };
   } catch {
     return { flashcard: null, role: null };

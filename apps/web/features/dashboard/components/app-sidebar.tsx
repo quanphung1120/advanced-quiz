@@ -1,5 +1,6 @@
 "use client";
 
+import { use, Suspense } from "react";
 import Link from "next/link";
 import {
   FolderIcon,
@@ -7,7 +8,6 @@ import {
   BarChart3Icon,
   UsersIcon,
   ChevronRightIcon,
-  SparklesIcon,
 } from "lucide-react";
 
 import {
@@ -22,8 +22,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import type { Collection } from "@/types/collection";
-import { CreateCollectionDialog } from "@/features/collections/components/create-collection-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Collection } from "@/features/collections/service/api";
 
 import { Badge } from "@/components/ui/badge";
 
@@ -54,11 +54,30 @@ const navItems = [
   },
 ];
 
-interface AppSidebarProps {
-  collections: Collection[];
+function RecentSectionSkeleton() {
+  return (
+    <SidebarMenu>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <SidebarMenuItem key={index}>
+          <div className="flex items-center gap-2 px-2 py-1.5">
+            <Skeleton className="size-4 rounded" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
 }
 
-export function AppSidebar({ collections }: AppSidebarProps) {
+interface RecentCollectionsListProps {
+  collectionsPromise: Promise<Collection[]>;
+}
+
+function RecentCollectionsList({
+  collectionsPromise,
+}: RecentCollectionsListProps) {
+  const collections = use(collectionsPromise);
+
   // Get the most recent 6 collections for the sidebar
   const recentCollections = collections
     .sort(
@@ -67,6 +86,42 @@ export function AppSidebar({ collections }: AppSidebarProps) {
     )
     .slice(0, 6);
 
+  if (recentCollections.length === 0) {
+    return (
+      <div className="px-2 py-4 text-center">
+        <p className="text-xs text-muted-foreground">No collections yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <SidebarMenu>
+      {recentCollections.map((collection) => (
+        <SidebarMenuItem key={collection.id}>
+          <SidebarMenuButton
+            asChild
+            tooltip={collection.name}
+            className="transition-all hover:bg-primary/10 hover:text-primary"
+          >
+            <Link
+              href={`/dashboard/collections/${collection.id}`}
+              prefetch={false}
+            >
+              <FolderIcon className="size-4" />
+              <span className="truncate">{collection.name}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
+}
+
+interface AppSidebarProps {
+  collectionsPromise: Promise<Collection[]>;
+}
+
+export function AppSidebar({ collectionsPromise }: AppSidebarProps) {
   return (
     <Sidebar className="border-r border-border/50">
       <SidebarHeader>
@@ -85,7 +140,6 @@ export function AppSidebar({ collections }: AppSidebarProps) {
                   <span className="font-display text-base">Recallly</span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     Flashcard Learning
-                    <SparklesIcon className="h-3 w-3 text-primary/60" />
                   </span>
                 </div>
               </Link>
@@ -144,33 +198,9 @@ export function AppSidebar({ collections }: AppSidebarProps) {
             <ChevronRightIcon className="size-4" />
           </SidebarGroupAction>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {recentCollections.length === 0 ? (
-                <div className="px-2 py-4 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    No collections yet
-                  </p>
-                </div>
-              ) : (
-                recentCollections.map((collection) => (
-                  <SidebarMenuItem key={collection.id}>
-                    <SidebarMenuButton
-                      asChild
-                      tooltip={collection.name}
-                      className="transition-all hover:bg-primary/10 hover:text-primary"
-                    >
-                      <Link
-                        href={`/dashboard/collections/${collection.id}`}
-                        prefetch={false}
-                      >
-                        <FolderIcon className="size-4" />
-                        <span className="truncate">{collection.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))
-              )}
-            </SidebarMenu>
+            <Suspense fallback={<RecentSectionSkeleton />}>
+              <RecentCollectionsList collectionsPromise={collectionsPromise} />
+            </Suspense>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

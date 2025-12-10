@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { SearchIcon, PlusIcon, SparklesIcon } from "lucide-react";
+import { SearchIcon, PlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -36,15 +36,12 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-6 pt-2">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium uppercase tracking-widest text-primary">
-                Dashboard
-              </span>
-              <SparklesIcon className="h-4 w-4 text-primary" />
-            </div>
+            <span className="text-sm font-medium uppercase tracking-widest text-primary">
+              Dashboard
+            </span>
             <h1 className="font-display text-3xl tracking-tight md:text-4xl lg:text-5xl">
-              <span className="block">Ready to</span>
-              <span className="block bg-linear-to-r from-primary via-primary to-primary/70 bg-clip-text text-transparent">
+              Ready to{" "}
+              <span className="bg-linear-to-r from-primary via-primary to-primary/70 bg-clip-text text-transparent">
                 learn today?
               </span>
             </h1>

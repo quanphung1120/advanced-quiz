@@ -15,6 +15,7 @@ import (
 	"github.com/quanphung1120/advanced-quiz-be/ent/collection"
 	"github.com/quanphung1120/advanced-quiz-be/ent/collectioncollaborator"
 	"github.com/quanphung1120/advanced-quiz-be/ent/flashcard"
+	"github.com/quanphung1120/advanced-quiz-be/ent/flashcardreview"
 	"github.com/quanphung1120/advanced-quiz-be/ent/predicate"
 )
 
@@ -30,6 +31,7 @@ const (
 	TypeCollection             = "Collection"
 	TypeCollectionCollaborator = "CollectionCollaborator"
 	TypeFlashcard              = "Flashcard"
+	TypeFlashcardReview        = "FlashcardReview"
 )
 
 // CollectionMutation represents an operation that mutates the Collection nodes in the graph.
@@ -1395,6 +1397,9 @@ type FlashcardMutation struct {
 	clearedFields     map[string]struct{}
 	collection        *uuid.UUID
 	clearedcollection bool
+	reviews           map[uuid.UUID]struct{}
+	removedreviews    map[uuid.UUID]struct{}
+	clearedreviews    bool
 	done              bool
 	oldValue          func(context.Context) (*Flashcard, error)
 	predicates        []predicate.Flashcard
@@ -1783,6 +1788,60 @@ func (m *FlashcardMutation) ResetCollection() {
 	m.clearedcollection = false
 }
 
+// AddReviewIDs adds the "reviews" edge to the FlashcardReview entity by ids.
+func (m *FlashcardMutation) AddReviewIDs(ids ...uuid.UUID) {
+	if m.reviews == nil {
+		m.reviews = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.reviews[ids[i]] = struct{}{}
+	}
+}
+
+// ClearReviews clears the "reviews" edge to the FlashcardReview entity.
+func (m *FlashcardMutation) ClearReviews() {
+	m.clearedreviews = true
+}
+
+// ReviewsCleared reports if the "reviews" edge to the FlashcardReview entity was cleared.
+func (m *FlashcardMutation) ReviewsCleared() bool {
+	return m.clearedreviews
+}
+
+// RemoveReviewIDs removes the "reviews" edge to the FlashcardReview entity by IDs.
+func (m *FlashcardMutation) RemoveReviewIDs(ids ...uuid.UUID) {
+	if m.removedreviews == nil {
+		m.removedreviews = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.reviews, ids[i])
+		m.removedreviews[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedReviews returns the removed IDs of the "reviews" edge to the FlashcardReview entity.
+func (m *FlashcardMutation) RemovedReviewsIDs() (ids []uuid.UUID) {
+	for id := range m.removedreviews {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ReviewsIDs returns the "reviews" edge IDs in the mutation.
+func (m *FlashcardMutation) ReviewsIDs() (ids []uuid.UUID) {
+	for id := range m.reviews {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetReviews resets all changes to the "reviews" edge.
+func (m *FlashcardMutation) ResetReviews() {
+	m.reviews = nil
+	m.clearedreviews = false
+	m.removedreviews = nil
+}
+
 // Where appends a list predicates to the FlashcardMutation builder.
 func (m *FlashcardMutation) Where(ps ...predicate.Flashcard) {
 	m.predicates = append(m.predicates, ps...)
@@ -2018,9 +2077,12 @@ func (m *FlashcardMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *FlashcardMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.collection != nil {
 		edges = append(edges, flashcard.EdgeCollection)
+	}
+	if m.reviews != nil {
+		edges = append(edges, flashcard.EdgeReviews)
 	}
 	return edges
 }
@@ -2033,27 +2095,47 @@ func (m *FlashcardMutation) AddedIDs(name string) []ent.Value {
 		if id := m.collection; id != nil {
 			return []ent.Value{*id}
 		}
+	case flashcard.EdgeReviews:
+		ids := make([]ent.Value, 0, len(m.reviews))
+		for id := range m.reviews {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *FlashcardMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.removedreviews != nil {
+		edges = append(edges, flashcard.EdgeReviews)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *FlashcardMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case flashcard.EdgeReviews:
+		ids := make([]ent.Value, 0, len(m.removedreviews))
+		for id := range m.removedreviews {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *FlashcardMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedcollection {
 		edges = append(edges, flashcard.EdgeCollection)
+	}
+	if m.clearedreviews {
+		edges = append(edges, flashcard.EdgeReviews)
 	}
 	return edges
 }
@@ -2064,6 +2146,8 @@ func (m *FlashcardMutation) EdgeCleared(name string) bool {
 	switch name {
 	case flashcard.EdgeCollection:
 		return m.clearedcollection
+	case flashcard.EdgeReviews:
+		return m.clearedreviews
 	}
 	return false
 }
@@ -2086,6 +2170,1179 @@ func (m *FlashcardMutation) ResetEdge(name string) error {
 	case flashcard.EdgeCollection:
 		m.ResetCollection()
 		return nil
+	case flashcard.EdgeReviews:
+		m.ResetReviews()
+		return nil
 	}
 	return fmt.Errorf("unknown Flashcard edge %s", name)
+}
+
+// FlashcardReviewMutation represents an operation that mutates the FlashcardReview nodes in the graph.
+type FlashcardReviewMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *uuid.UUID
+	user_id          *string
+	ease_factor      *float64
+	addease_factor   *float64
+	interval         *int
+	addinterval      *int
+	due_at           *time.Time
+	status           *flashcardreview.Status
+	learning_step    *int
+	addlearning_step *int
+	review_count     *int
+	addreview_count  *int
+	lapse_count      *int
+	addlapse_count   *int
+	last_reviewed_at *time.Time
+	created_at       *time.Time
+	updated_at       *time.Time
+	clearedFields    map[string]struct{}
+	flashcard        *uuid.UUID
+	clearedflashcard bool
+	done             bool
+	oldValue         func(context.Context) (*FlashcardReview, error)
+	predicates       []predicate.FlashcardReview
+}
+
+var _ ent.Mutation = (*FlashcardReviewMutation)(nil)
+
+// flashcardreviewOption allows management of the mutation configuration using functional options.
+type flashcardreviewOption func(*FlashcardReviewMutation)
+
+// newFlashcardReviewMutation creates new mutation for the FlashcardReview entity.
+func newFlashcardReviewMutation(c config, op Op, opts ...flashcardreviewOption) *FlashcardReviewMutation {
+	m := &FlashcardReviewMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeFlashcardReview,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withFlashcardReviewID sets the ID field of the mutation.
+func withFlashcardReviewID(id uuid.UUID) flashcardreviewOption {
+	return func(m *FlashcardReviewMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *FlashcardReview
+		)
+		m.oldValue = func(ctx context.Context) (*FlashcardReview, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().FlashcardReview.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withFlashcardReview sets the old FlashcardReview of the mutation.
+func withFlashcardReview(node *FlashcardReview) flashcardreviewOption {
+	return func(m *FlashcardReviewMutation) {
+		m.oldValue = func(context.Context) (*FlashcardReview, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m FlashcardReviewMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m FlashcardReviewMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of FlashcardReview entities.
+func (m *FlashcardReviewMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *FlashcardReviewMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *FlashcardReviewMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().FlashcardReview.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetUserID sets the "user_id" field.
+func (m *FlashcardReviewMutation) SetUserID(s string) {
+	m.user_id = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *FlashcardReviewMutation) UserID() (r string, exists bool) {
+	v := m.user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *FlashcardReviewMutation) ResetUserID() {
+	m.user_id = nil
+}
+
+// SetFlashcardID sets the "flashcard_id" field.
+func (m *FlashcardReviewMutation) SetFlashcardID(u uuid.UUID) {
+	m.flashcard = &u
+}
+
+// FlashcardID returns the value of the "flashcard_id" field in the mutation.
+func (m *FlashcardReviewMutation) FlashcardID() (r uuid.UUID, exists bool) {
+	v := m.flashcard
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFlashcardID returns the old "flashcard_id" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldFlashcardID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFlashcardID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFlashcardID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFlashcardID: %w", err)
+	}
+	return oldValue.FlashcardID, nil
+}
+
+// ResetFlashcardID resets all changes to the "flashcard_id" field.
+func (m *FlashcardReviewMutation) ResetFlashcardID() {
+	m.flashcard = nil
+}
+
+// SetEaseFactor sets the "ease_factor" field.
+func (m *FlashcardReviewMutation) SetEaseFactor(f float64) {
+	m.ease_factor = &f
+	m.addease_factor = nil
+}
+
+// EaseFactor returns the value of the "ease_factor" field in the mutation.
+func (m *FlashcardReviewMutation) EaseFactor() (r float64, exists bool) {
+	v := m.ease_factor
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEaseFactor returns the old "ease_factor" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldEaseFactor(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEaseFactor is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEaseFactor requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEaseFactor: %w", err)
+	}
+	return oldValue.EaseFactor, nil
+}
+
+// AddEaseFactor adds f to the "ease_factor" field.
+func (m *FlashcardReviewMutation) AddEaseFactor(f float64) {
+	if m.addease_factor != nil {
+		*m.addease_factor += f
+	} else {
+		m.addease_factor = &f
+	}
+}
+
+// AddedEaseFactor returns the value that was added to the "ease_factor" field in this mutation.
+func (m *FlashcardReviewMutation) AddedEaseFactor() (r float64, exists bool) {
+	v := m.addease_factor
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetEaseFactor resets all changes to the "ease_factor" field.
+func (m *FlashcardReviewMutation) ResetEaseFactor() {
+	m.ease_factor = nil
+	m.addease_factor = nil
+}
+
+// SetInterval sets the "interval" field.
+func (m *FlashcardReviewMutation) SetInterval(i int) {
+	m.interval = &i
+	m.addinterval = nil
+}
+
+// Interval returns the value of the "interval" field in the mutation.
+func (m *FlashcardReviewMutation) Interval() (r int, exists bool) {
+	v := m.interval
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInterval returns the old "interval" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldInterval(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInterval is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInterval requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInterval: %w", err)
+	}
+	return oldValue.Interval, nil
+}
+
+// AddInterval adds i to the "interval" field.
+func (m *FlashcardReviewMutation) AddInterval(i int) {
+	if m.addinterval != nil {
+		*m.addinterval += i
+	} else {
+		m.addinterval = &i
+	}
+}
+
+// AddedInterval returns the value that was added to the "interval" field in this mutation.
+func (m *FlashcardReviewMutation) AddedInterval() (r int, exists bool) {
+	v := m.addinterval
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetInterval resets all changes to the "interval" field.
+func (m *FlashcardReviewMutation) ResetInterval() {
+	m.interval = nil
+	m.addinterval = nil
+}
+
+// SetDueAt sets the "due_at" field.
+func (m *FlashcardReviewMutation) SetDueAt(t time.Time) {
+	m.due_at = &t
+}
+
+// DueAt returns the value of the "due_at" field in the mutation.
+func (m *FlashcardReviewMutation) DueAt() (r time.Time, exists bool) {
+	v := m.due_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDueAt returns the old "due_at" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldDueAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDueAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDueAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDueAt: %w", err)
+	}
+	return oldValue.DueAt, nil
+}
+
+// ResetDueAt resets all changes to the "due_at" field.
+func (m *FlashcardReviewMutation) ResetDueAt() {
+	m.due_at = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *FlashcardReviewMutation) SetStatus(f flashcardreview.Status) {
+	m.status = &f
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *FlashcardReviewMutation) Status() (r flashcardreview.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldStatus(ctx context.Context) (v flashcardreview.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *FlashcardReviewMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetLearningStep sets the "learning_step" field.
+func (m *FlashcardReviewMutation) SetLearningStep(i int) {
+	m.learning_step = &i
+	m.addlearning_step = nil
+}
+
+// LearningStep returns the value of the "learning_step" field in the mutation.
+func (m *FlashcardReviewMutation) LearningStep() (r int, exists bool) {
+	v := m.learning_step
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLearningStep returns the old "learning_step" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldLearningStep(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLearningStep is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLearningStep requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLearningStep: %w", err)
+	}
+	return oldValue.LearningStep, nil
+}
+
+// AddLearningStep adds i to the "learning_step" field.
+func (m *FlashcardReviewMutation) AddLearningStep(i int) {
+	if m.addlearning_step != nil {
+		*m.addlearning_step += i
+	} else {
+		m.addlearning_step = &i
+	}
+}
+
+// AddedLearningStep returns the value that was added to the "learning_step" field in this mutation.
+func (m *FlashcardReviewMutation) AddedLearningStep() (r int, exists bool) {
+	v := m.addlearning_step
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLearningStep resets all changes to the "learning_step" field.
+func (m *FlashcardReviewMutation) ResetLearningStep() {
+	m.learning_step = nil
+	m.addlearning_step = nil
+}
+
+// SetReviewCount sets the "review_count" field.
+func (m *FlashcardReviewMutation) SetReviewCount(i int) {
+	m.review_count = &i
+	m.addreview_count = nil
+}
+
+// ReviewCount returns the value of the "review_count" field in the mutation.
+func (m *FlashcardReviewMutation) ReviewCount() (r int, exists bool) {
+	v := m.review_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReviewCount returns the old "review_count" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldReviewCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReviewCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReviewCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReviewCount: %w", err)
+	}
+	return oldValue.ReviewCount, nil
+}
+
+// AddReviewCount adds i to the "review_count" field.
+func (m *FlashcardReviewMutation) AddReviewCount(i int) {
+	if m.addreview_count != nil {
+		*m.addreview_count += i
+	} else {
+		m.addreview_count = &i
+	}
+}
+
+// AddedReviewCount returns the value that was added to the "review_count" field in this mutation.
+func (m *FlashcardReviewMutation) AddedReviewCount() (r int, exists bool) {
+	v := m.addreview_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetReviewCount resets all changes to the "review_count" field.
+func (m *FlashcardReviewMutation) ResetReviewCount() {
+	m.review_count = nil
+	m.addreview_count = nil
+}
+
+// SetLapseCount sets the "lapse_count" field.
+func (m *FlashcardReviewMutation) SetLapseCount(i int) {
+	m.lapse_count = &i
+	m.addlapse_count = nil
+}
+
+// LapseCount returns the value of the "lapse_count" field in the mutation.
+func (m *FlashcardReviewMutation) LapseCount() (r int, exists bool) {
+	v := m.lapse_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLapseCount returns the old "lapse_count" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldLapseCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLapseCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLapseCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLapseCount: %w", err)
+	}
+	return oldValue.LapseCount, nil
+}
+
+// AddLapseCount adds i to the "lapse_count" field.
+func (m *FlashcardReviewMutation) AddLapseCount(i int) {
+	if m.addlapse_count != nil {
+		*m.addlapse_count += i
+	} else {
+		m.addlapse_count = &i
+	}
+}
+
+// AddedLapseCount returns the value that was added to the "lapse_count" field in this mutation.
+func (m *FlashcardReviewMutation) AddedLapseCount() (r int, exists bool) {
+	v := m.addlapse_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLapseCount resets all changes to the "lapse_count" field.
+func (m *FlashcardReviewMutation) ResetLapseCount() {
+	m.lapse_count = nil
+	m.addlapse_count = nil
+}
+
+// SetLastReviewedAt sets the "last_reviewed_at" field.
+func (m *FlashcardReviewMutation) SetLastReviewedAt(t time.Time) {
+	m.last_reviewed_at = &t
+}
+
+// LastReviewedAt returns the value of the "last_reviewed_at" field in the mutation.
+func (m *FlashcardReviewMutation) LastReviewedAt() (r time.Time, exists bool) {
+	v := m.last_reviewed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastReviewedAt returns the old "last_reviewed_at" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldLastReviewedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastReviewedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastReviewedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastReviewedAt: %w", err)
+	}
+	return oldValue.LastReviewedAt, nil
+}
+
+// ClearLastReviewedAt clears the value of the "last_reviewed_at" field.
+func (m *FlashcardReviewMutation) ClearLastReviewedAt() {
+	m.last_reviewed_at = nil
+	m.clearedFields[flashcardreview.FieldLastReviewedAt] = struct{}{}
+}
+
+// LastReviewedAtCleared returns if the "last_reviewed_at" field was cleared in this mutation.
+func (m *FlashcardReviewMutation) LastReviewedAtCleared() bool {
+	_, ok := m.clearedFields[flashcardreview.FieldLastReviewedAt]
+	return ok
+}
+
+// ResetLastReviewedAt resets all changes to the "last_reviewed_at" field.
+func (m *FlashcardReviewMutation) ResetLastReviewedAt() {
+	m.last_reviewed_at = nil
+	delete(m.clearedFields, flashcardreview.FieldLastReviewedAt)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *FlashcardReviewMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *FlashcardReviewMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *FlashcardReviewMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *FlashcardReviewMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *FlashcardReviewMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the FlashcardReview entity.
+// If the FlashcardReview object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FlashcardReviewMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *FlashcardReviewMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearFlashcard clears the "flashcard" edge to the Flashcard entity.
+func (m *FlashcardReviewMutation) ClearFlashcard() {
+	m.clearedflashcard = true
+	m.clearedFields[flashcardreview.FieldFlashcardID] = struct{}{}
+}
+
+// FlashcardCleared reports if the "flashcard" edge to the Flashcard entity was cleared.
+func (m *FlashcardReviewMutation) FlashcardCleared() bool {
+	return m.clearedflashcard
+}
+
+// FlashcardIDs returns the "flashcard" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// FlashcardID instead. It exists only for internal usage by the builders.
+func (m *FlashcardReviewMutation) FlashcardIDs() (ids []uuid.UUID) {
+	if id := m.flashcard; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetFlashcard resets all changes to the "flashcard" edge.
+func (m *FlashcardReviewMutation) ResetFlashcard() {
+	m.flashcard = nil
+	m.clearedflashcard = false
+}
+
+// Where appends a list predicates to the FlashcardReviewMutation builder.
+func (m *FlashcardReviewMutation) Where(ps ...predicate.FlashcardReview) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the FlashcardReviewMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *FlashcardReviewMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.FlashcardReview, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *FlashcardReviewMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *FlashcardReviewMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (FlashcardReview).
+func (m *FlashcardReviewMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *FlashcardReviewMutation) Fields() []string {
+	fields := make([]string, 0, 12)
+	if m.user_id != nil {
+		fields = append(fields, flashcardreview.FieldUserID)
+	}
+	if m.flashcard != nil {
+		fields = append(fields, flashcardreview.FieldFlashcardID)
+	}
+	if m.ease_factor != nil {
+		fields = append(fields, flashcardreview.FieldEaseFactor)
+	}
+	if m.interval != nil {
+		fields = append(fields, flashcardreview.FieldInterval)
+	}
+	if m.due_at != nil {
+		fields = append(fields, flashcardreview.FieldDueAt)
+	}
+	if m.status != nil {
+		fields = append(fields, flashcardreview.FieldStatus)
+	}
+	if m.learning_step != nil {
+		fields = append(fields, flashcardreview.FieldLearningStep)
+	}
+	if m.review_count != nil {
+		fields = append(fields, flashcardreview.FieldReviewCount)
+	}
+	if m.lapse_count != nil {
+		fields = append(fields, flashcardreview.FieldLapseCount)
+	}
+	if m.last_reviewed_at != nil {
+		fields = append(fields, flashcardreview.FieldLastReviewedAt)
+	}
+	if m.created_at != nil {
+		fields = append(fields, flashcardreview.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, flashcardreview.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *FlashcardReviewMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case flashcardreview.FieldUserID:
+		return m.UserID()
+	case flashcardreview.FieldFlashcardID:
+		return m.FlashcardID()
+	case flashcardreview.FieldEaseFactor:
+		return m.EaseFactor()
+	case flashcardreview.FieldInterval:
+		return m.Interval()
+	case flashcardreview.FieldDueAt:
+		return m.DueAt()
+	case flashcardreview.FieldStatus:
+		return m.Status()
+	case flashcardreview.FieldLearningStep:
+		return m.LearningStep()
+	case flashcardreview.FieldReviewCount:
+		return m.ReviewCount()
+	case flashcardreview.FieldLapseCount:
+		return m.LapseCount()
+	case flashcardreview.FieldLastReviewedAt:
+		return m.LastReviewedAt()
+	case flashcardreview.FieldCreatedAt:
+		return m.CreatedAt()
+	case flashcardreview.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *FlashcardReviewMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case flashcardreview.FieldUserID:
+		return m.OldUserID(ctx)
+	case flashcardreview.FieldFlashcardID:
+		return m.OldFlashcardID(ctx)
+	case flashcardreview.FieldEaseFactor:
+		return m.OldEaseFactor(ctx)
+	case flashcardreview.FieldInterval:
+		return m.OldInterval(ctx)
+	case flashcardreview.FieldDueAt:
+		return m.OldDueAt(ctx)
+	case flashcardreview.FieldStatus:
+		return m.OldStatus(ctx)
+	case flashcardreview.FieldLearningStep:
+		return m.OldLearningStep(ctx)
+	case flashcardreview.FieldReviewCount:
+		return m.OldReviewCount(ctx)
+	case flashcardreview.FieldLapseCount:
+		return m.OldLapseCount(ctx)
+	case flashcardreview.FieldLastReviewedAt:
+		return m.OldLastReviewedAt(ctx)
+	case flashcardreview.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case flashcardreview.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown FlashcardReview field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FlashcardReviewMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case flashcardreview.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case flashcardreview.FieldFlashcardID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFlashcardID(v)
+		return nil
+	case flashcardreview.FieldEaseFactor:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEaseFactor(v)
+		return nil
+	case flashcardreview.FieldInterval:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInterval(v)
+		return nil
+	case flashcardreview.FieldDueAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDueAt(v)
+		return nil
+	case flashcardreview.FieldStatus:
+		v, ok := value.(flashcardreview.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case flashcardreview.FieldLearningStep:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLearningStep(v)
+		return nil
+	case flashcardreview.FieldReviewCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReviewCount(v)
+		return nil
+	case flashcardreview.FieldLapseCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLapseCount(v)
+		return nil
+	case flashcardreview.FieldLastReviewedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastReviewedAt(v)
+		return nil
+	case flashcardreview.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case flashcardreview.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown FlashcardReview field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *FlashcardReviewMutation) AddedFields() []string {
+	var fields []string
+	if m.addease_factor != nil {
+		fields = append(fields, flashcardreview.FieldEaseFactor)
+	}
+	if m.addinterval != nil {
+		fields = append(fields, flashcardreview.FieldInterval)
+	}
+	if m.addlearning_step != nil {
+		fields = append(fields, flashcardreview.FieldLearningStep)
+	}
+	if m.addreview_count != nil {
+		fields = append(fields, flashcardreview.FieldReviewCount)
+	}
+	if m.addlapse_count != nil {
+		fields = append(fields, flashcardreview.FieldLapseCount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *FlashcardReviewMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case flashcardreview.FieldEaseFactor:
+		return m.AddedEaseFactor()
+	case flashcardreview.FieldInterval:
+		return m.AddedInterval()
+	case flashcardreview.FieldLearningStep:
+		return m.AddedLearningStep()
+	case flashcardreview.FieldReviewCount:
+		return m.AddedReviewCount()
+	case flashcardreview.FieldLapseCount:
+		return m.AddedLapseCount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FlashcardReviewMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case flashcardreview.FieldEaseFactor:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddEaseFactor(v)
+		return nil
+	case flashcardreview.FieldInterval:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddInterval(v)
+		return nil
+	case flashcardreview.FieldLearningStep:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLearningStep(v)
+		return nil
+	case flashcardreview.FieldReviewCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddReviewCount(v)
+		return nil
+	case flashcardreview.FieldLapseCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLapseCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown FlashcardReview numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *FlashcardReviewMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(flashcardreview.FieldLastReviewedAt) {
+		fields = append(fields, flashcardreview.FieldLastReviewedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *FlashcardReviewMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *FlashcardReviewMutation) ClearField(name string) error {
+	switch name {
+	case flashcardreview.FieldLastReviewedAt:
+		m.ClearLastReviewedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown FlashcardReview nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *FlashcardReviewMutation) ResetField(name string) error {
+	switch name {
+	case flashcardreview.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case flashcardreview.FieldFlashcardID:
+		m.ResetFlashcardID()
+		return nil
+	case flashcardreview.FieldEaseFactor:
+		m.ResetEaseFactor()
+		return nil
+	case flashcardreview.FieldInterval:
+		m.ResetInterval()
+		return nil
+	case flashcardreview.FieldDueAt:
+		m.ResetDueAt()
+		return nil
+	case flashcardreview.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case flashcardreview.FieldLearningStep:
+		m.ResetLearningStep()
+		return nil
+	case flashcardreview.FieldReviewCount:
+		m.ResetReviewCount()
+		return nil
+	case flashcardreview.FieldLapseCount:
+		m.ResetLapseCount()
+		return nil
+	case flashcardreview.FieldLastReviewedAt:
+		m.ResetLastReviewedAt()
+		return nil
+	case flashcardreview.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case flashcardreview.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown FlashcardReview field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *FlashcardReviewMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.flashcard != nil {
+		edges = append(edges, flashcardreview.EdgeFlashcard)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *FlashcardReviewMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case flashcardreview.EdgeFlashcard:
+		if id := m.flashcard; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *FlashcardReviewMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *FlashcardReviewMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *FlashcardReviewMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedflashcard {
+		edges = append(edges, flashcardreview.EdgeFlashcard)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *FlashcardReviewMutation) EdgeCleared(name string) bool {
+	switch name {
+	case flashcardreview.EdgeFlashcard:
+		return m.clearedflashcard
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *FlashcardReviewMutation) ClearEdge(name string) error {
+	switch name {
+	case flashcardreview.EdgeFlashcard:
+		m.ClearFlashcard()
+		return nil
+	}
+	return fmt.Errorf("unknown FlashcardReview unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *FlashcardReviewMutation) ResetEdge(name string) error {
+	switch name {
+	case flashcardreview.EdgeFlashcard:
+		m.ResetFlashcard()
+		return nil
+	}
+	return fmt.Errorf("unknown FlashcardReview edge %s", name)
 }

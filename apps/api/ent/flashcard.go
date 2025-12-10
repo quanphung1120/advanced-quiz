@@ -43,9 +43,11 @@ type Flashcard struct {
 type FlashcardEdges struct {
 	// Collection holds the value of the collection edge.
 	Collection *Collection `json:"collection,omitempty"`
+	// Reviews for this flashcard across different users
+	Reviews []*FlashcardReview `json:"reviews,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // CollectionOrErr returns the Collection value or an error if the edge
@@ -57,6 +59,15 @@ func (e FlashcardEdges) CollectionOrErr() (*Collection, error) {
 		return nil, &NotFoundError{label: collection.Label}
 	}
 	return nil, &NotLoadedError{edge: "collection"}
+}
+
+// ReviewsOrErr returns the Reviews value or an error if the edge
+// was not loaded in eager-loading.
+func (e FlashcardEdges) ReviewsOrErr() ([]*FlashcardReview, error) {
+	if e.loadedTypes[1] {
+		return e.Reviews, nil
+	}
+	return nil, &NotLoadedError{edge: "reviews"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -149,6 +160,11 @@ func (_m *Flashcard) Value(name string) (ent.Value, error) {
 // QueryCollection queries the "collection" edge of the Flashcard entity.
 func (_m *Flashcard) QueryCollection() *CollectionQuery {
 	return NewFlashcardClient(_m.config).QueryCollection(_m)
+}
+
+// QueryReviews queries the "reviews" edge of the Flashcard entity.
+func (_m *Flashcard) QueryReviews() *FlashcardReviewQuery {
+	return NewFlashcardClient(_m.config).QueryReviews(_m)
 }
 
 // Update returns a builder for updating this Flashcard.

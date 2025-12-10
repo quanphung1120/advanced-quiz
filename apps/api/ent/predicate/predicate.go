@@ -14,3 +14,6 @@ type CollectionCollaborator func(*sql.Selector)
 
 // Flashcard is the predicate function for flashcard builders.
 type Flashcard func(*sql.Selector)
+
+// FlashcardReview is the predicate function for flashcardreview builders.
+type FlashcardReview func(*sql.Selector)

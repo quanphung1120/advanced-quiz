@@ -3,23 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import {
-  Calendar,
-  Clock,
-  Edit,
-  Play,
-  SparklesIcon,
-  LayersIcon,
-} from "lucide-react";
+import { Calendar, Clock, Edit, Play, LayersIcon, Brain } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Collection } from "@/types/collection";
-import { Flashcard } from "@/types/flashcard";
+import type { Collection } from "@/features/collections/service/api";
+import type { Flashcard } from "@/features/flashcards/service/api";
 import { CollaboratorsSection } from "@/features/collections/components/collaborators-section";
 import { EditCollectionDialog } from "@/features/collections/components/edit-collection-dialog";
 import { CreateFlashcardForm } from "@/features/flashcards/components/create-flashcard-form";
 import { FlashcardsPreview } from "@/features/flashcards/components/flashcards-preview";
+import { ClearProgressDialog } from "@/features/flashcards/components/clear-progress-dialog";
 
 interface CollectionDetailClientProps {
   collection: Collection;
@@ -87,7 +81,6 @@ export function CollectionDetailClient({
                   <h1 className="font-display text-2xl tracking-tight md:text-3xl">
                     {collection.name}
                   </h1>
-                  <SparklesIcon className="h-5 w-5 text-primary" />
                 </div>
                 {collection.description && (
                   <p className="max-w-2xl leading-relaxed text-muted-foreground">
@@ -107,18 +100,38 @@ export function CollectionDetailClient({
                     Edit
                   </Button>
                 )}
+                <ClearProgressDialog
+                  collectionId={collection.id}
+                  collectionName={collection.name}
+                />
                 {flashcards.length > 0 && (
-                  <Button
-                    asChild
-                    size="sm"
-                    className="gap-1.5 shadow-lg transition-all hover:shadow-xl"
-                    style={{ backgroundColor: color.accent }}
-                  >
-                    <Link href={`/learn/${collection.id}`} prefetch={false}>
-                      <Play className="size-4" />
-                      Start Learning
-                    </Link>
-                  </Button>
+                  <>
+                    <Button
+                      asChild
+                      size="sm"
+                      className="gap-1.5 shadow-lg transition-all hover:shadow-xl hover:-translate-y-px"
+                      variant="default"
+                    >
+                      <Link
+                        href={`/learn/${collection.id}/srs`}
+                        prefetch={false}
+                      >
+                        <Brain className="size-4" />
+                        Deep Learn
+                      </Link>
+                    </Button>
+                    <Button
+                      asChild
+                      size="sm"
+                      className="gap-1.5 shadow-lg transition-all hover:shadow-xl"
+                      style={{ backgroundColor: color.accent }}
+                    >
+                      <Link href={`/learn/${collection.id}`} prefetch={false}>
+                        <Play className="size-4" />
+                        Start Learning
+                      </Link>
+                    </Button>
+                  </>
                 )}
               </div>
             </div>

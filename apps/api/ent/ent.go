@@ -15,6 +15,7 @@ import (
 	"github.com/quanphung1120/advanced-quiz-be/ent/collection"
 	"github.com/quanphung1120/advanced-quiz-be/ent/collectioncollaborator"
 	"github.com/quanphung1120/advanced-quiz-be/ent/flashcard"
+	"github.com/quanphung1120/advanced-quiz-be/ent/flashcardreview"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -78,6 +79,7 @@ func checkColumn(t, c string) error {
 			collection.Table:             collection.ValidColumn,
 			collectioncollaborator.Table: collectioncollaborator.ValidColumn,
 			flashcard.Table:              flashcard.ValidColumn,
+			flashcardreview.Table:        flashcardreview.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

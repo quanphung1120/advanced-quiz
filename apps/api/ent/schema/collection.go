@@ -43,8 +43,7 @@ func (Collection) Fields() []ent.Field {
 
 func (Collection) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("owner_id").
-			Unique(),
+		index.Fields("owner_id"),
 	}
 }
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { format } from "date-fns";
-import { Edit, MoreHorizontal, Trash2 } from "lucide-react";
+import { Trash2, MoreHorizontal, Edit } from "lucide-react";
 
+import type { Flashcard } from "../service/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Flashcard } from "@/types/flashcard";
 
 interface FlashcardPreviewCardProps {
   flashcard: Flashcard;

@@ -28,7 +28,7 @@ import {
   updateCollectionSchema,
   type UpdateCollectionFormData,
 } from "../schemas";
-import type { Collection } from "@/types/collection";
+import type { Collection } from "../service/api";
 
 interface EditCollectionDialogProps {
   collection: Collection;

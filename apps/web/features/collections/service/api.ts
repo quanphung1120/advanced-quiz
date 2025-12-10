@@ -1,20 +1,69 @@
-import { cache } from "react";
-import { Collection, GetCollectionResponse } from "@/types/collection";
 import { auth } from "@clerk/nextjs/server";
+import { z } from "zod";
 
-interface GetMyCollectionsResponse {
-  owned_collections: Collection[];
-  shared_collections: Collection[];
-  errorMessage: string;
-}
+// ============================================================
+// Zod Schemas
+// ============================================================
 
-export const getCollections = cache(async (): Promise<Collection[]> => {
-  const { getToken, isAuthenticated } = await auth();
+const CollectionCollaboratorSchema = z.object({
+  id: z.string(),
+  collection_id: z.string(),
+  user_id: z.string(),
+  email: z.string().optional(),
+  role: z.enum(["viewer", "editor", "admin"]),
+  created_at: z.string(),
+  updated_at: z.string().optional(),
+});
 
-  if (!getToken || !isAuthenticated) {
-    return [];
-  }
+const CollectionSchema = z.object({
+  id: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  image: z.string().optional(),
+  owner_id: z.string(),
+  is_public: z.boolean().optional(),
+  collaborators: z.array(CollectionCollaboratorSchema).optional(),
+});
 
+const GetMyCollectionsResponseSchema = z.object({
+  owned_collections: z.array(CollectionSchema).nullable(),
+  shared_collections: z.array(CollectionSchema).nullable(),
+  errorMessage: z.string().optional(),
+});
+
+const GetCollectionResponseSchema = z.object({
+  collection: CollectionSchema.nullable(),
+  role: z.enum(["owner", "editor", "viewer"]).optional(),
+  errorMessage: z.string().optional(),
+});
+
+const SearchUsersResponseSchema = z.object({
+  emails: z.array(z.string()).nullable(),
+});
+
+// ============================================================
+// Types (inferred from Zod schemas)
+// ============================================================
+
+export type Collection = z.infer<typeof CollectionSchema>;
+export type CollectionCollaborator = z.infer<
+  typeof CollectionCollaboratorSchema
+>;
+
+// ============================================================
+// API Configuration
+// ============================================================
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+// ============================================================
+// API Functions
+// ============================================================
+
+export const getCollections = async (): Promise<Collection[]> => {
+  const { getToken } = await auth();
   const token = await getToken();
 
   if (!token) {
@@ -22,42 +71,39 @@ export const getCollections = cache(async (): Promise<Collection[]> => {
   }
 
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/collections/me`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        next: { tags: ["collections"] },
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/api/v1/collections/me`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       return [];
     }
 
-    const data: GetMyCollectionsResponse = await response.json();
-    // Combine owned and shared collections
+    const json = await response.json();
+    const parsed = GetMyCollectionsResponseSchema.safeParse(json);
+
+    if (!parsed.success) {
+      console.error("Failed to parse getCollections response:", parsed.error);
+      return [];
+    }
+
     return [
-      ...(data.owned_collections || []),
-      ...(data.shared_collections || []),
+      ...(parsed.data.owned_collections || []),
+      ...(parsed.data.shared_collections || []),
     ];
   } catch {
     return [];
   }
-});
+};
 
 export async function getMyCollections(): Promise<{
   owned: Collection[];
   shared: Collection[];
 }> {
-  const { getToken, isAuthenticated } = await auth();
-
-  if (!getToken || !isAuthenticated) {
-    return { owned: [], shared: [] };
-  }
-
+  const { getToken } = await auth();
   const token = await getToken();
 
   if (!token) {
@@ -65,25 +111,28 @@ export async function getMyCollections(): Promise<{
   }
 
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/collections/me`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        next: { tags: ["collections"] },
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/api/v1/collections/me`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       return { owned: [], shared: [] };
     }
 
-    const data: GetMyCollectionsResponse = await response.json();
+    const json = await response.json();
+    const parsed = GetMyCollectionsResponseSchema.safeParse(json);
+
+    if (!parsed.success) {
+      console.error("Failed to parse getMyCollections response:", parsed.error);
+      return { owned: [], shared: [] };
+    }
+
     return {
-      owned: data.owned_collections || [],
-      shared: data.shared_collections || [],
+      owned: parsed.data.owned_collections || [],
+      shared: parsed.data.shared_collections || [],
     };
   } catch {
     return { owned: [], shared: [] };
@@ -94,12 +143,7 @@ export async function getCollection(id: string): Promise<{
   collection: Collection | null;
   role: "owner" | "editor" | "viewer" | null;
 }> {
-  const { getToken, isAuthenticated } = await auth();
-
-  if (!getToken || !isAuthenticated) {
-    return { collection: null, role: null };
-  }
-
+  const { getToken } = await auth();
   const token = await getToken();
 
   if (!token) {
@@ -107,26 +151,28 @@ export async function getCollection(id: string): Promise<{
   }
 
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/collections/${id}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/api/v1/collections/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       return { collection: null, role: null };
     }
 
-    const data: GetCollectionResponse & {
-      role?: "owner" | "editor" | "viewer";
-    } = await response.json();
+    const json = await response.json();
+    const parsed = GetCollectionResponseSchema.safeParse(json);
+
+    if (!parsed.success) {
+      console.error("Failed to parse getCollection response:", parsed.error);
+      return { collection: null, role: null };
+    }
+
     return {
-      collection: data.collection || null,
-      role: data.role || null,
+      collection: parsed.data.collection || null,
+      role: parsed.data.role || null,
     };
   } catch {
     return { collection: null, role: null };
@@ -134,12 +180,7 @@ export async function getCollection(id: string): Promise<{
 }
 
 export async function searchUsersByEmail(query: string): Promise<string[]> {
-  const { getToken, isAuthenticated } = await auth();
-
-  if (!getToken || !isAuthenticated) {
-    return [];
-  }
-
+  const { getToken } = await auth();
   const token = await getToken();
 
   if (!token) {
@@ -148,7 +189,7 @@ export async function searchUsersByEmail(query: string): Promise<string[]> {
 
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/users/search-email-addresses?query=${encodeURIComponent(query)}`,
+      `${API_BASE_URL}/api/v1/users/search-email-addresses?query=${encodeURIComponent(query)}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -161,8 +202,18 @@ export async function searchUsersByEmail(query: string): Promise<string[]> {
       return [];
     }
 
-    const data: { emails: string[] } = await response.json();
-    return data.emails || [];
+    const json = await response.json();
+    const parsed = SearchUsersResponseSchema.safeParse(json);
+
+    if (!parsed.success) {
+      console.error(
+        "Failed to parse searchUsersByEmail response:",
+        parsed.error
+      );
+      return [];
+    }
+
+    return parsed.data.emails || [];
   } catch {
     return [];
   }

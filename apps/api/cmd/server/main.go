@@ -9,11 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/quanphung1120/advanced-quiz-be/config"
-	httpDelivery "github.com/quanphung1120/advanced-quiz-be/internal/delivery/http"
-	"github.com/quanphung1120/advanced-quiz-be/internal/delivery/http/handler"
-	"github.com/quanphung1120/advanced-quiz-be/internal/infrastructure/external"
-	infrarepo "github.com/quanphung1120/advanced-quiz-be/internal/infrastructure/repository"
-	"github.com/quanphung1120/advanced-quiz-be/internal/usecase"
+	"github.com/quanphung1120/advanced-quiz-be/internal"
+	"github.com/quanphung1120/advanced-quiz-be/internal/controller"
+	"github.com/quanphung1120/advanced-quiz-be/internal/repository"
+	"github.com/quanphung1120/advanced-quiz-be/internal/service"
 )
 
 func main() {
@@ -32,8 +31,6 @@ func main() {
 	}
 	clerk.SetKey(clerkSecretKey)
 
-	// Manual Dependency Injection
-	
 	// Initialize database
 	entClient, err := config.InitializeDatabase()
 	if err != nil {
@@ -42,22 +39,25 @@ func main() {
 	defer entClient.Close()
 
 	// Initialize repositories
-	collectionRepo := infrarepo.NewEntCollectionRepository(entClient)
-	flashcardRepo := infrarepo.NewEntFlashcardRepository(entClient)
-	userRepo := external.NewClerkUserRepository()
+	collectionRepo := repository.NewCollectionRepository(entClient)
+	flashcardRepo := repository.NewFlashcardRepository(entClient)
+	flashcardReviewRepo := repository.NewFlashcardReviewRepository(entClient)
+	userRepo := repository.NewUserRepository()
 
-	// Initialize use cases
-	collectionUseCase := usecase.NewCollectionUseCase(collectionRepo, userRepo)
-	flashcardUseCase := usecase.NewFlashcardUseCase(flashcardRepo, collectionUseCase)
-	userUseCase := usecase.NewUserUseCase(userRepo)
+	// Initialize services
+	collectionService := service.NewCollectionService(collectionRepo, userRepo)
+	flashcardService := service.NewFlashcardService(flashcardRepo, collectionService)
+	flashcardReviewService := service.NewFlashcardReviewService(flashcardReviewRepo, flashcardRepo, collectionService)
+	userService := service.NewUserService(userRepo)
 
-	// Initialize handlers
-	collectionHandler := handler.NewCollectionHandler(collectionUseCase)
-	flashcardHandler := handler.NewFlashcardHandler(flashcardUseCase)
-	userHandler := handler.NewUserHandler(userUseCase)
+	// Initialize controllers
+	collectionController := controller.NewCollectionController(collectionService)
+	flashcardController := controller.NewFlashcardController(flashcardService)
+	flashcardReviewController := controller.NewFlashcardReviewController(flashcardReviewService)
+	userController := controller.NewUserController(userService)
 
 	// Initialize router
-	appRouter := httpDelivery.NewRouter(collectionHandler, flashcardHandler, userHandler)
+	appRouter := internal.NewRouter(collectionController, flashcardController, flashcardReviewController, userController)
 
 	// Setup Gin router
 	router := gin.Default()

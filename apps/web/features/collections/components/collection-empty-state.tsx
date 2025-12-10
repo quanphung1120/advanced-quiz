@@ -1,4 +1,4 @@
-import { FolderPlusIcon, SparklesIcon } from "lucide-react";
+import { FolderPlusIcon } from "lucide-react";
 
 import { CreateCollectionDialog } from "./create-collection-dialog";
 
@@ -14,12 +14,9 @@ export function CollectionEmptyState() {
         </div>
 
         {/* Content */}
-        <div className="mb-2 flex items-center gap-2">
-          <h3 className="font-display text-2xl tracking-tight">
-            No collections yet
-          </h3>
-          <SparklesIcon className="h-5 w-5 text-primary" />
-        </div>
+        <h3 className="font-display text-2xl tracking-tight">
+          No collections yet
+        </h3>
         <p className="mb-6 max-w-sm text-muted-foreground">
           Create your first collection to start organizing your flashcards and
           master new topics with spaced repetition.

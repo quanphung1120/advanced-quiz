@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Collection } from "@/types/collection";
+import type { Collection } from "../service/api";
 import { EditCollectionDialog } from "./edit-collection-dialog";
 import { DeleteCollectionDialog } from "./delete-collection-dialog";
 
@@ -83,7 +83,7 @@ export function CollectionCard({ collection }: CollectionCardProps) {
     <>
       <div className="group relative">
         {/* Kahoot-style card with bold gradient and playful design */}
-        <div className="relative overflow-hidden rounded-2xl shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+        <div className="relative overflow-hidden rounded-2xl border border-border shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           {/* Gradient Header */}
           <div className={`relative h-32 bg-linear-to-br ${color.bg}`}>
             {/* Decorative shapes - Kahoot style */}
@@ -141,7 +141,7 @@ export function CollectionCard({ collection }: CollectionCardProps) {
           </div>
 
           {/* Content Section */}
-          <div className="bg-background p-4">
+          <div className="bg-card p-4">
             <h3 className="mb-1 line-clamp-1 text-lg font-bold">
               {collection.name}
             </h3>

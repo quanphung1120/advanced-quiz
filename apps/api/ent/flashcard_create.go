@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/quanphung1120/advanced-quiz-be/ent/collection"
 	"github.com/quanphung1120/advanced-quiz-be/ent/flashcard"
+	"github.com/quanphung1120/advanced-quiz-be/ent/flashcardreview"
 )
 
 // FlashcardCreate is the builder for creating a Flashcard entity.
@@ -105,6 +106,21 @@ func (_c *FlashcardCreate) SetNillableID(v *uuid.UUID) *FlashcardCreate {
 // SetCollection sets the "collection" edge to the Collection entity.
 func (_c *FlashcardCreate) SetCollection(v *Collection) *FlashcardCreate {
 	return _c.SetCollectionID(v.ID)
+}
+
+// AddReviewIDs adds the "reviews" edge to the FlashcardReview entity by IDs.
+func (_c *FlashcardCreate) AddReviewIDs(ids ...uuid.UUID) *FlashcardCreate {
+	_c.mutation.AddReviewIDs(ids...)
+	return _c
+}
+
+// AddReviews adds the "reviews" edges to the FlashcardReview entity.
+func (_c *FlashcardCreate) AddReviews(v ...*FlashcardReview) *FlashcardCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddReviewIDs(ids...)
 }
 
 // Mutation returns the FlashcardMutation object of the builder.
@@ -280,6 +296,22 @@ func (_c *FlashcardCreate) createSpec() (*Flashcard, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.CollectionID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ReviewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   flashcard.ReviewsTable,
+			Columns: []string{flashcard.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(flashcardreview.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

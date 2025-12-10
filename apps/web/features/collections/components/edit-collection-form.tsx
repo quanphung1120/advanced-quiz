@@ -30,7 +30,7 @@ import {
   updateCollectionSchema,
   UpdateCollectionFormData,
 } from "@/features/collections/schemas";
-import { Collection } from "@/types/collection";
+import type { Collection } from "@/features/collections/service/api";
 
 interface EditCollectionFormProps {
   collection: Collection;
