@@ -185,7 +185,7 @@ func (r *FlashcardReviewRepositoryImpl) DeleteByCollection(ctx context.Context, 
 
 	if err != nil {
 		return 0, err
-	}
+	} 
 
 	return deleted, nil
 }
