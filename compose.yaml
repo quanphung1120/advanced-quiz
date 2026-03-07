@@ -1,0 +1,89 @@
+services:
+  db:
+    image: postgres:18.3
+    container_name: advanced-quiz-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: advanced_quiz
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d advanced_quiz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api-new/Dockerfile
+      target: development
+    container_name: advanced-quiz-api
+    working_dir: /workspace
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - apps/api-new/.env
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/advanced_quiz
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-development-secret-key-minimum-32-chars}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
+      API_URL: ${API_URL:-http://localhost:3001}
+      WEB_URL: ${WEB_URL:-http://localhost:5173}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/workspace
+      - bun-install-cache:/root/.bun/install/cache
+      - api-root-node-modules:/workspace/node_modules
+      - api-node-modules:/workspace/apps/api-new/node_modules
+    command: ["sh", "-lc", "bun install && cd apps/api-new && bun run dev"]
+    healthcheck:
+      test: ["CMD", "wget", "-nv", "-t1", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web-new/Dockerfile
+      target: development
+    container_name: advanced-quiz-web
+    working_dir: /workspace
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    env_file:
+      - apps/web-new/.env
+    environment:
+      NODE_ENV: development
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/workspace
+      - bun-install-cache:/root/.bun/install/cache
+      - web-root-node-modules:/workspace/node_modules
+      - web-node-modules:/workspace/apps/web-new/node_modules
+    command: ["sh", "-lc", "bun install && cd apps/web-new && bun run dev"]
+
+volumes:
+  postgres-data:
+  bun-install-cache:
+  api-root-node-modules:
+  web-root-node-modules:
+  api-node-modules:
+  web-node-modules:

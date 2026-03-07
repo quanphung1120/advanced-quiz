@@ -1,0 +1,308 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
+}
+
+:root {
+  --radius: 0.125rem;
+
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ── Light Mode (default) ──────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
+:root,
+:root.light {
+  /* ── Pure White Background ── */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.12 0 0);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.12 0 0);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.12 0 0);
+
+  /* ── Pure Black Primary (high contrast) ── */
+  --primary: oklch(0.12 0 0);
+  --primary-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.95 0 0);
+  --secondary-foreground: oklch(0.12 0 0);
+
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+
+  --accent: oklch(0.93 0 0);
+  --accent-foreground: oklch(0.12 0 0);
+
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.12 0 0);
+}
+
+/* ── Dark Mode ─────────────────────────────────────────────────────────────── */
+
+:root.dark {
+  /* ── Deep Black Background ── */
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.98 0 0);
+
+  --card: oklch(0.12 0.03 111);
+  --card-foreground: oklch(0.98 0 0);
+
+  --popover: oklch(0.12 0.03 111);
+  --popover-foreground: oklch(0.98 0 0);
+
+  /* ── Better RAG Lime Green – #D9FF00 ── */
+  --primary: oklch(0.88 0.28 111);
+  --primary-foreground: oklch(0.1 0 0);
+
+  --secondary: oklch(0.12 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+
+  --muted: oklch(0.15 0 0);
+  --muted-foreground: oklch(0.55 0 0);
+
+  --accent: oklch(0.18 0 0);
+  --accent-foreground: oklch(0.98 0 0);
+
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.18 0 0);
+  --input: oklch(0.18 0 0);
+  --ring: oklch(0.88 0.28 111);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    isolation: isolate;
+  }
+}
+
+/* ─── Decorative / layout helpers ───────────────────────────────────────────── */
+
+/**
+ * Theme-aware grid overlay. Uses a CSS custom property so the grid line color
+ * adapts between dark (white tint) and light (dark tint) themes without any JS.
+ */
+:root,
+:root.light {
+  --grid-line: rgba(0, 0, 0, 0.03);
+  --glow-primary-top: oklch(0.12 0 0 / 0.03);
+  --glow-primary-bottom: oklch(0.12 0 0 / 0.02);
+  --glow-accent-top: oklch(0.12 0 0 / 0.04);
+  --glow-accent-bottom: oklch(0.12 0 0 / 0.02);
+}
+
+:root.dark {
+  --grid-line: rgba(255, 255, 255, 0.015);
+  --glow-primary-top: oklch(0.88 0.28 111 / 0.08);
+  --glow-primary-bottom: oklch(0.88 0.28 111 / 0.04);
+  --glow-accent-top: oklch(0.52 0.26 258 / 0.12);
+  --glow-accent-bottom: oklch(0.52 0.26 258 / 0.06);
+}
+
+:root.dark {
+  --grid-line: rgba(255, 255, 255, 0.012);
+  --glow-primary-top: oklch(0.88 0.28 111 / 0.08);
+  --glow-primary-bottom: oklch(0.88 0.28 111 / 0.04);
+  --glow-accent-top: oklch(0.52 0.26 258 / 0.12);
+  --glow-accent-bottom: oklch(0.52 0.26 258 / 0.06);
+}
+
+.bg-grid-overlay {
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.bg-grid-overlay-sm {
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.glow-primary-top {
+  background: radial-gradient(
+    ellipse 50% 50% at 50% -10%,
+    var(--glow-primary-top),
+    transparent
+  );
+}
+
+.glow-accent-top {
+  background: radial-gradient(
+    ellipse 70% 50% at 50% -10%,
+    var(--glow-accent-top),
+    transparent
+  );
+}
+
+.glow-accent-bottom {
+  background: radial-gradient(
+    ellipse 60% 80% at 50% 120%,
+    var(--glow-accent-bottom),
+    transparent
+  );
+}
+
+/* ─── Noise texture overlay ─────────────────────────────────────────────── */
+
+.noise-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+/* ─── CSS Keyframes ─────────────────────────────────────────────────────── */
+
+@keyframes float-card {
+  0%,
+  100% {
+    transform: translateZ(0px) translateY(0px);
+  }
+  50% {
+    transform: translateZ(0px) translateY(-10px);
+  }
+}
+
+@keyframes float-card-mid {
+  0%,
+  100% {
+    transform: translateZ(-40px) translateX(24px) translateY(6px);
+  }
+  50% {
+    transform: translateZ(-40px) translateX(24px) translateY(-6px);
+  }
+}
+
+@keyframes float-card-back {
+  0%,
+  100% {
+    transform: translateZ(-80px) translateX(48px) translateY(14px);
+  }
+  50% {
+    transform: translateZ(-80px) translateX(48px) translateY(2px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes beam-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(20px, -10px) rotate(2deg);
+  }
+  66% {
+    transform: translate(-10px, 15px) rotate(-1deg);
+  }
+}

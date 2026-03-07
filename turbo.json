@@ -5,11 +5,13 @@
     "build": {
       "dependsOn": ["^build"],
       "env": [
-        "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
-        "CLERK_SECRET_KEY",
-        "NEXT_PUBLIC_API_BASE_URL",
+        "DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
         "API_URL",
-        "DATABASE_URL"
+        "WEB_URL",
+        "CORS_ORIGIN",
+        "VITE_API_URL"
       ],
       "inputs": [
         "$TURBO_DEFAULT$",
@@ -18,7 +20,7 @@
         ".env.production",
         ".env"
       ],
-      "outputs": [".next/**", "!.next/cache/**", "bin/**"]
+      "outputs": ["dist/**", "!dist/cache/**"]
     },
     "dev": {
       "cache": false,
@@ -30,6 +32,25 @@
         ".env.development",
         ".env"
       ]
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "check-types": {
+      "dependsOn": ["^build"]
+    },
+    "db:generate": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false
+    },
+    "db:push": {
+      "cache": false
+    },
+    "db:studio": {
+      "cache": false,
+      "persistent": true
     }
   }
 }
