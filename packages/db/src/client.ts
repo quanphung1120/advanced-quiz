@@ -17,8 +17,10 @@ if (!connectionString) {
 
 const pool = new Pool({
   connectionString,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 30000,
 });
+
+neonConfig.pipelineConnect = false;
 
 const globalForPrisma = globalThis as GlobalForPrisma;
 
