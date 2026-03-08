@@ -35,8 +35,7 @@ services:
       HOST: 0.0.0.0
       PORT: 3001
       DATABASE_URL: postgresql://postgres:postgres@db:5432/advanced_quiz
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-development-secret-key-minimum-32-chars}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
+      AUTH_SECRET: ${AUTH_SECRET:-development-secret-key-minimum-32-chars}
       API_URL: ${API_URL:-http://localhost:3001}
       WEB_URL: ${WEB_URL:-http://localhost:5173}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}

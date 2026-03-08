@@ -28,14 +28,13 @@ async function bootstrap() {
   );
   const configService = app.get(ConfigService);
   const nodeEnv = configService.getOrThrow<string>("NODE_ENV");
-  const betterAuthSecret =
-    configService.getOrThrow<string>("BETTER_AUTH_SECRET");
+  const authSecret = configService.getOrThrow<string>("AUTH_SECRET");
   const corsOrigin = configService.getOrThrow<string>("CORS_ORIGIN");
   const apiUrl = configService.getOrThrow<string>("API_URL");
   const port = configService.getOrThrow<number>("PORT");
 
   await app.register(cookie as never, {
-    secret: betterAuthSecret,
+    secret: authSecret,
     parseOptions: {
       httpOnly: true,
       secure: nodeEnv === "production",
@@ -53,24 +52,24 @@ async function bootstrap() {
   });
 
   const enableDocs =
-    nodeEnv !== "production" || process.env.ENABLE_DOCS === "true";
+    nodeEnv !== "production" || configService.get<boolean>("ENABLE_DOCS");
 
   if (enableDocs) {
     const config = new DocumentBuilder()
       .setTitle("Advanced Quiz API")
       .setDescription(
-        "Flashcard and spaced-repetition API powered by NestJS, Fastify, Prisma, and Better Auth",
+        "Flashcard and spaced-repetition API powered by NestJS, Fastify, and Prisma",
       )
       .setVersion("0.1.0")
       .addServer(
         apiUrl,
         nodeEnv === "production" ? "Production" : "Development",
       )
-      .addCookieAuth("better-auth.session_token", {
+      .addCookieAuth("access_token", {
         type: "apiKey",
         in: "cookie",
-        name: "better-auth.session_token",
-        description: "Better Auth session cookie",
+        name: "access_token",
+        description: "JWT access token cookie",
       })
       .build();
 

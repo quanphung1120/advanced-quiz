@@ -39,6 +39,8 @@ ENV PORT=3001
 # Copy build artifacts and dependencies
 COPY --from=builder /app/apps/api-new/dist ./dist
 COPY --from=builder /app/apps/api-new/package.json .
+COPY --from=builder /app/apps/api-new/prisma ./prisma
+COPY --from=builder /app/apps/api-new/prisma.config.ts .
 COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3001
@@ -47,5 +49,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget -nv -t1 --spider http://localhost:3001/health || exit 1
 
-ENTRYPOINT ["bun", "run", "dist/index.js"]
+ENTRYPOINT ["sh", "-c", "bun run db:migrate:deploy && bun run dist/index.js"]
 

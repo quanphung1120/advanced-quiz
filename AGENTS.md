@@ -8,12 +8,11 @@ This file is for agentic coding tools working in `advanced-quiz`.
 - Monorepo tool: Turborepo via `turbo.json`
 - Workspace layout: `apps/*` and `packages/*`
 - Primary active apps:
-  - `apps/api-new`: Bun + Fastify + Drizzle + Better Auth
+  - `apps/api-new`: Bun + Fastify + Prisma + JWT/cookie auth
   - `apps/web-new`: Vite + React 19 + React Router + React Query + Tailwind 4
 - Shared packages:
   - `packages/config`: env parsing and config helpers
   - `packages/contracts`: shared Zod DTOs and API schemas
-  - `packages/ui`: small shared React UI package
 
 ## Rule Files Scan
 
@@ -46,9 +45,7 @@ This file is for agentic coding tools working in `advanced-quiz`.
 
 - Lint all workspaces that expose a lint script: `bun run lint`
 - Lint only the new web app from root: `turbo run lint --filter=@advanced-quiz/web`
-- Lint only the shared UI package from root: `turbo run lint --filter=@repo/ui`
 - Lint directly inside `apps/web-new`: `bun run lint`
-- Lint directly inside `packages/ui`: `bun run lint`
 - Important: `apps/api-new`, `packages/config`, and `packages/contracts` currently do not expose a `lint` script.
 
 ## Typecheck Commands
@@ -98,7 +95,7 @@ This file is for agentic coding tools working in `advanced-quiz`.
 
 - Root `.env.example` is the main template for local development.
 - `apps/api-new/.env.example` and `apps/web-new/.env.example` mirror app-specific subsets.
-- Important variables include `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `API_URL`, `WEB_URL`, `CORS_ORIGIN`, `PORT`, and `VITE_API_URL`.
+- Important variables include `DATABASE_URL`, `AUTH_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `API_URL`, `WEB_URL`, `CORS_ORIGIN`, `PORT`, and `VITE_API_URL`.
 - New env validation belongs in `packages/config` using Zod schemas.
 - Prefer typed env access over ad hoc string handling when adding new configuration.
 
@@ -180,5 +177,5 @@ This file is for agentic coding tools working in `advanced-quiz`.
 - Prefer root Turborepo commands when changes span multiple workspaces.
 - Prefer package-local commands when working in a single app or package.
 - Run `bun run check-types` after TypeScript-heavy changes.
-- Run `bun run lint` when editing `apps/web-new` or `packages/ui`.
+- Run `bun run lint` when editing `apps/web-new`.
 - If you add tests in the future, update this file with both full-suite and single-test commands.
