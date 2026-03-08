@@ -3,7 +3,7 @@ import type {
   ReviewRating,
   ReviewStatus,
 } from "@advanced-quiz/contracts";
-import type { Prisma } from "../../generated/prisma/index.js";
+import type { Prisma } from "@advanced-quiz/db";
 
 const LEARNING_STEPS = [1, 10];
 const RELEARNING_STEPS = [10];

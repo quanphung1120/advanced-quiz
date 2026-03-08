@@ -11,6 +11,7 @@ This file is for agentic coding tools working in `advanced-quiz`.
   - `apps/api-new`: Bun + Fastify + Prisma + JWT/cookie auth
   - `apps/web-new`: Vite + React 19 + React Router + React Query + Tailwind 4
 - Shared packages:
+  - `packages/db`: shared Prisma schema, migrations, and generated client
   - `packages/config`: env parsing and config helpers
   - `packages/contracts`: shared Zod DTOs and API schemas
 
@@ -37,6 +38,7 @@ This file is for agentic coding tools working in `advanced-quiz`.
 - Build all configured workspaces from root: `bun run build`
 - Build only the new API from root: `turbo run build --filter=@advanced-quiz/api`
 - Build only the new web app from root: `turbo run build --filter=@advanced-quiz/web`
+- Prepare Prisma client from root: `bun run db:generate`
 - Build only shared config package from root: `turbo run check-types --filter=@advanced-quiz/config`
 - Build API directly inside `apps/api-new`: `bun run build`
 - Build web directly inside `apps/web-new`: `bun run build`
@@ -54,16 +56,19 @@ This file is for agentic coding tools working in `advanced-quiz`.
 - Typecheck only the new API from root: `turbo run check-types --filter=@advanced-quiz/api`
 - Typecheck only the new web app from root: `turbo run check-types --filter=@advanced-quiz/web`
 - Typecheck only contracts package from root: `turbo run check-types --filter=@advanced-quiz/contracts`
+- Typecheck only db package from root: `turbo run check-types --filter=@advanced-quiz/db`
 - Typecheck directly inside `apps/api-new`: `bun run check-types`
 - Typecheck directly inside `apps/web-new`: `bun run check-types`
 
 ## Database Commands
 
-- Generate Drizzle artifacts for the new API from root: `bun run db:generate`
-- Run Drizzle migrations for the new API from root: `bun run db:migrate`
-- Push schema to DB for the new API from root: `bun run db:push`
-- Open Drizzle Studio for the new API from root: `bun run db:studio`
-- Run auth migration script inside `apps/api-new`: `bun run db:migrate-auth`
+- Generate Prisma client from root: `bun run db:generate`
+- Run Prisma development migrations from root: `bun run db:migrate`
+- Run Prisma deploy migrations from root: `bun run db:deploy`
+- Push Prisma schema to DB from root: `bun run db:push`
+- Open Prisma Studio from root: `bun run db:studio`
+- Generate Prisma client directly inside `packages/db`: `bun run db:generate`
+- Run Prisma development migrations directly inside `packages/db`: `bun run db:migrate`
 - With Docker running, sync schema via compose: `docker compose exec api bun run db:push`
 
 ## Test Status

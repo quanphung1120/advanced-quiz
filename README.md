@@ -1,6 +1,6 @@
 # Advanced Quiz
 
-Local development targets the new Bun/Fastify API in `apps/api-new` and the new Vite/React app in `apps/web-new`.
+Local development targets the new Bun/Fastify API in `apps/api-new`, the Vite/React app in `apps/web-new`, and a shared Prisma workspace in `packages/db`.
 
 ## Local Dev
 
@@ -26,6 +26,13 @@ This runs:
 
 - `@advanced-quiz/api` on `http://localhost:3001`
 - `@advanced-quiz/web` on `http://localhost:5173`
+
+Prisma is managed from the shared database workspace:
+
+```sh
+bun run db:generate
+bun run db:migrate
+```
 
 ## Docker Compose
 

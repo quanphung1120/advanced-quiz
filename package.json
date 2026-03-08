@@ -14,21 +14,16 @@
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "db:generate": "turbo run db:generate --filter=@advanced-quiz/api",
-    "db:migrate": "turbo run db:migrate --filter=@advanced-quiz/api",
-    "db:push": "turbo run db:push --filter=@advanced-quiz/api",
-    "db:studio": "turbo run db:studio --filter=@advanced-quiz/api"
+    "db:generate": "turbo run db:generate --filter=@advanced-quiz/db",
+    "db:migrate": "turbo run db:migrate --filter=@advanced-quiz/db",
+    "db:deploy": "turbo run db:deploy --filter=@advanced-quiz/db",
+    "db:push": "turbo run db:push --filter=@advanced-quiz/db",
+    "db:studio": "turbo run db:studio --filter=@advanced-quiz/db"
   },
   "devDependencies": {
     "@types/pg": "^8.18.0",
     "prettier": "^3.6.2",
-    "prisma": "^7.4.2",
     "turbo": "^2.6.1",
     "typescript": "5.9.2"
-  },
-  "dependencies": {
-    "@prisma/adapter-pg": "^7.4.2",
-    "@prisma/client": "^7.4.2",
-    "pg": "^8.20.0"
   }
 }

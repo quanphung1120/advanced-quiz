@@ -3,7 +3,7 @@
   "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "^db:generate"],
       "env": [
         "DATABASE_URL",
         "AUTH_SECRET",
@@ -22,6 +22,7 @@
       "outputs": ["dist/**", "!dist/cache/**"]
     },
     "dev": {
+      "dependsOn": ["^db:generate"],
       "cache": false,
       "persistent": true,
       "inputs": [
@@ -36,9 +37,12 @@
       "dependsOn": ["^build"]
     },
     "check-types": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^check-types"]
     },
     "db:generate": {
+      "cache": false
+    },
+    "db:deploy": {
       "cache": false
     },
     "db:migrate": {
