@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import type { CollectionRole, ReviewRating } from "@advanced-quiz/contracts";
-import { Prisma } from "../../generated/prisma/index.js";
+import type { Prisma } from "@advanced-quiz/db";
 import { PrismaService } from "../prisma/prisma.service";
 import { buildCollectionStats, calculateNextReview } from "../lib/srs";
 import {

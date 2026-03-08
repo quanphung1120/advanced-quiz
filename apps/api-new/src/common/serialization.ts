@@ -2,7 +2,7 @@ import type {
   CollectionRole,
   CollaboratorRole,
 } from "@advanced-quiz/contracts";
-import type { Prisma } from "../../generated/prisma/index.js";
+import type { Prisma } from "@advanced-quiz/db";
 
 export function toIsoString(value: Date | null): string | null {
   return value ? value.toISOString() : null;

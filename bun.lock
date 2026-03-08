@@ -4,15 +4,9 @@
   "workspaces": {
     "": {
       "name": "advanced-quiz",
-      "dependencies": {
-        "@prisma/adapter-pg": "^7.4.2",
-        "@prisma/client": "^7.4.2",
-        "pg": "^8.20.0",
-      },
       "devDependencies": {
         "@types/pg": "^8.18.0",
         "prettier": "^3.6.2",
-        "prisma": "^7.4.2",
         "turbo": "^2.6.1",
         "typescript": "5.9.2",
       },
@@ -23,6 +17,7 @@
       "dependencies": {
         "@advanced-quiz/config": "workspace:*",
         "@advanced-quiz/contracts": "workspace:*",
+        "@advanced-quiz/db": "workspace:*",
         "@fastify/cookie": "^11.0.0",
         "@fastify/cors": "^11.0.0",
         "@nestjs/common": "^11.1.16",
@@ -32,14 +27,10 @@
         "@nestjs/passport": "^11.0.5",
         "@nestjs/platform-fastify": "^11.1.16",
         "@nestjs/swagger": "^11.2.6",
-        "@prisma/adapter-pg": "^7.4.2",
-        "@prisma/client": "^7.4.2",
         "bcrypt": "^6.0.0",
         "fastify": "^5.2.0",
         "passport": "^0.7.0",
         "passport-jwt": "^4.0.1",
-        "pg": "^8.20.0",
-        "prisma": "^7.4.2",
         "reflect-metadata": "^0.2.2",
         "rxjs": "^7.8.2",
         "zod": "^3.24.0",
@@ -118,6 +109,20 @@
         "typescript": "^5.9.2",
       },
     },
+    "packages/db": {
+      "name": "@advanced-quiz/db",
+      "version": "0.0.1",
+      "dependencies": {
+        "@prisma/adapter-pg": "^7.4.2",
+        "@prisma/client": "^7.4.2",
+        "pg": "^8.20.0",
+      },
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "prisma": "^7.4.2",
+        "typescript": "^5.9.2",
+      },
+    },
   },
   "packages": {
     "@advanced-quiz/api": ["@advanced-quiz/api@workspace:apps/api-new"],
@@ -125,6 +130,8 @@
     "@advanced-quiz/config": ["@advanced-quiz/config@workspace:packages/config"],
 
     "@advanced-quiz/contracts": ["@advanced-quiz/contracts@workspace:packages/contracts"],
+
+    "@advanced-quiz/db": ["@advanced-quiz/db@workspace:packages/db"],
 
     "@advanced-quiz/web": ["@advanced-quiz/web@workspace:apps/web-new"],
 
@@ -1235,6 +1242,8 @@
     "@advanced-quiz/config/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@advanced-quiz/contracts/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "@advanced-quiz/db/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@advanced-quiz/web/@types/node": ["@types/node@24.12.0", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-GYDxsZi3ChgmckRT9HPU0WEhKLP08ev/Yfcq2AstjrDASOYCSXeyjDsHg4v5t4jOj7cyDX3vmprafKlWIG9MXQ=="],
 
