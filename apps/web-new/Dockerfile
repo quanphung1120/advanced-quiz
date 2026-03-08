@@ -16,7 +16,7 @@ RUN bun install --frozen-lockfile
 # Build the project and its dependencies
 COPY --from=builder /app/out/full/ .
 
-ARG VITE_API_URL
+ARG VITE_API_URL=https://aq-backend.quanphungg.me
 ARG VITE_CLOUDINARY_CLOUD_NAME=duzlm9qwl
 ENV NODE_ENV=production
 ENV VITE_API_URL=${VITE_API_URL}
