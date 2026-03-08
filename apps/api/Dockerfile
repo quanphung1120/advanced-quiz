@@ -1,5 +1,5 @@
-# Build stage - using Debian-based image for full compatibility
-FROM golang:1.25.4-trixie AS builder
+# Build stage - using Alpine for efficiency
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 

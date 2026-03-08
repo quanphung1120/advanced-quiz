@@ -1,20 +1,27 @@
 {
   "name": "advanced-quiz",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "packageManager": "bun@1.3.10",
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=@advanced-quiz/api --filter=@advanced-quiz/web",
+    "dev:api": "turbo run dev --filter=@advanced-quiz/api",
+    "dev:web": "turbo run dev --filter=@advanced-quiz/web",
     "lint": "turbo run lint",
+    "check-types": "turbo run check-types",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "db:generate": "turbo run db:generate --filter=@advanced-quiz/api",
+    "db:migrate": "turbo run db:migrate --filter=@advanced-quiz/api",
+    "db:push": "turbo run db:push --filter=@advanced-quiz/api",
+    "db:studio": "turbo run db:studio --filter=@advanced-quiz/api"
   },
   "devDependencies": {
     "prettier": "^3.6.2",
     "turbo": "^2.6.1",
     "typescript": "5.9.2"
-  },
-  "packageManager": "pnpm@9.0.0",
-  "engines": {
-    "node": ">=18"
   }
 }
