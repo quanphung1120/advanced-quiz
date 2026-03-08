@@ -13,6 +13,8 @@
   "dependencies": {
     "@advanced-quiz/contracts": "workspace:*",
     "@base-ui/react": "^1.2.0",
+    "@cloudinary/react": "^1.14.4",
+    "@cloudinary/url-gen": "^1.22.0",
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.75.0",
     "axios": "^1.8.0",

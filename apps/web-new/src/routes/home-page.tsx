@@ -10,9 +10,11 @@ import {
   Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { AdvancedImage } from "@cloudinary/react";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { cloudinary } from "@/lib/cloudinary";
 import {
   TabsRoot,
   TabsList,
@@ -47,6 +49,8 @@ const stagger = {
 
 /* ─── Hero 3D Visual ──────────────────────────────────────────────────── */
 
+const heroImage = cloudinary.image("hero-visual-new_qkd2sj");
+
 function HeroVisual() {
   return (
     <div className="relative flex items-center justify-center py-12">
@@ -60,25 +64,11 @@ function HeroVisual() {
         <div className="absolute -bottom-10 -left-10 h-32 w-[1px] bg-primary/20" />
         <div className="absolute -bottom-10 -left-10 h-[1px] w-32 bg-primary/20" />
 
-        <img
-          src="/hero-visual-new.png"
+        <AdvancedImage
+          cldImg={heroImage}
           alt="Abstract 3D Knowledge Visualization"
           className="relative z-10 block w-full max-w-[550px] object-contain"
           style={{ filter: "drop-shadow(0 0 80px rgba(217, 255, 0, 0.1))" }}
-          onError={(e) => {
-            const target = e.currentTarget;
-            target.style.display = "none";
-            const parent = target.parentElement;
-            if (parent) {
-              const div = document.createElement("div");
-              div.className = "relative w-64 h-64 opacity-30";
-              div.innerHTML = `
-                <div class="absolute inset-0 border border-primary/40 rounded-full animate-pulse"></div>
-                <div class="absolute inset-8 border border-primary/30 rounded-full animate-pulse [animation-delay:0.2s]"></div>
-              `;
-              parent.appendChild(div);
-            }
-          }}
         />
       </motion.div>
 
