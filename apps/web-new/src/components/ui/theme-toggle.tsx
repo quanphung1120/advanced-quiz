@@ -1,5 +1,6 @@
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useTheme, type ThemeMode } from "@/lib/theme-context";
+import type { ThemeMode } from "@/lib/theme-context";
+import { useTheme } from "@/lib/use-theme";
 import { cn } from "@/lib/utils";
 
 const modes = [

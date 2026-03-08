@@ -1,17 +1,16 @@
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router";
 import { useAuth } from "@/features/auth/hooks/use-auth";
-
-// ─── Pages ────────────────────────────────────────────────────────────────────
-import { HomePage } from "@/routes/home-page";
+import { ForgotPasswordPage } from "@/features/auth/components/forgot-password-page";
+import { ResetPasswordPage } from "@/features/auth/components/reset-password-page";
 import { SignInPage } from "@/features/auth/components/sign-in-page";
 import { SignUpPage } from "@/features/auth/components/sign-up-page";
-import { DashboardPage } from "@/routes/dashboard/dashboard-page";
-import { DashboardLayout } from "@/routes/dashboard/dashboard-layout";
+import { VerifyEmailPage } from "@/features/auth/components/verify-email-page";
 import { CollectionPage } from "@/routes/dashboard/collection-page";
+import { DashboardLayout } from "@/routes/dashboard/dashboard-layout";
+import { DashboardPage } from "@/routes/dashboard/dashboard-page";
+import { HomePage } from "@/routes/home-page";
 import { LearnPage } from "@/routes/learn/learn-page";
 import { SrsPage } from "@/routes/learn/srs-page";
-
-// ─── Auth Guard ───────────────────────────────────────────────────────────────
 
 function RequireAuth() {
   const location = useLocation();
@@ -19,13 +18,8 @@ function RequireAuth() {
 
   if (isPending) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="space-y-3 text-center">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-2 border-muted border-t-foreground" />
-          <p className="text-sm uppercase tracking-[0.28em] text-muted-foreground">
-            Loading workspace
-          </p>
-        </div>
+      <div className="min-h-screen bg-background">
+        <DashboardLayout isLoading={true} />
       </div>
     );
   }
@@ -47,8 +41,6 @@ function PublicOnly() {
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Outlet />;
 }
 
-// ─── Root Layout ──────────────────────────────────────────────────────────────
-
 function RootLayout() {
   return (
     <div className="min-h-screen bg-background font-sans antialiased">
@@ -57,20 +49,19 @@ function RootLayout() {
   );
 }
 
-// ─── Route Tree ───────────────────────────────────────────────────────────────
-
 export function AppRoutes() {
   return (
     <Routes>
       <Route element={<RootLayout />}>
-        {/* Public routes */}
         <Route index element={<HomePage />} />
         <Route element={<PublicOnly />}>
           <Route path="/sign-in" element={<SignInPage />} />
           <Route path="/sign-up" element={<SignUpPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Route>
 
-        {/* Protected routes */}
         <Route element={<RequireAuth />}>
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
@@ -83,7 +74,6 @@ export function AppRoutes() {
           <Route path="/learn/:id/srs" element={<SrsPage />} />
         </Route>
 
-        {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

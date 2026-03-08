@@ -1,31 +1,50 @@
-import { startTransition, type FormEvent, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { startTransition, useState } from "react";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
+import { signUpBodySchema, type SignUpBody } from "@advanced-quiz/contracts";
+import { Button } from "@/components/ui/button";
 import { signUp } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
-import { Button } from "@/components/ui/button";
+import {
+  errorClass,
+  errorPanelClass,
+  inputClass,
+  labelClass,
+} from "./auth-form-styles";
 
 export function SignUpPage() {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignUpBody>({
+    resolver: zodResolver(signUpBodySchema),
+    defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+  });
+
+  async function onSubmit(data: SignUpBody) {
     setError(null);
     setLoading(true);
 
     try {
-      const result = await signUp.email({ email, password, name });
+      const result = await signUp.email(data);
       if (result.error) {
-        setError(result.error.message ?? "Registration failed. Please check your details.");
-      } else {
-        startTransition(() => {
-          navigate("/dashboard");
-        });
+        setError(
+          result.error.message ??
+            "Registration failed. Please check your details.",
+        );
+        return;
       }
+
+      const email = result.data?.email ?? data.email;
+      startTransition(() => {
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+      });
     } catch {
       setError("An unexpected error occurred during registration.");
     } finally {
@@ -35,85 +54,95 @@ export function SignUpPage() {
 
   return (
     <AuthPageShell
-      title="Join the System"
-      description="Create an account to start building your personal study workspace."
+      title="Create account"
+      description="Start building your personal study workspace."
       footerText="Already have an account?"
       footerActionLabel="Sign in"
       footerActionTo="/sign-in"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3.5 text-[13px] font-semibold text-destructive/90 transition-all animate-in fade-in slide-in-from-top-2">
-            {error}
-          </div>
-        )}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {error && <div className={errorPanelClass}>{error}</div>}
 
         <div className="space-y-2">
-          <label
-            htmlFor="name"
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1"
-          >
-            Full Name
+          <label htmlFor="name" className={labelClass}>
+            Full name
           </label>
           <input
             id="name"
             type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-            className="w-full rounded-lg border border-border bg-background px-4 py-3.5 text-sm ring-offset-background transition-all placeholder:text-muted-foreground/50 focus:border-primary/60 focus:bg-primary/5 focus:outline-none focus:ring-4 focus:ring-primary/5 font-medium"
+            autoComplete="name"
             placeholder="Alex Carter"
+            {...register("name")}
+            className={inputClass}
           />
+          {errors.name && <p className={errorClass}>{errors.name.message}</p>}
         </div>
 
         <div className="space-y-2">
-          <label
-            htmlFor="email"
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1"
-          >
-            Email Address
+          <label htmlFor="email" className={labelClass}>
+            Email
           </label>
           <input
             id="email"
             type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            className="w-full rounded-lg border border-border bg-background px-4 py-3.5 text-sm ring-offset-background transition-all placeholder:text-muted-foreground/50 focus:border-primary/60 focus:bg-primary/5 focus:outline-none focus:ring-4 focus:ring-primary/5 font-medium"
-            placeholder="name@company.com"
+            autoComplete="email"
+            placeholder="name@example.com"
+            {...register("email")}
+            className={inputClass}
           />
+          {errors.email && <p className={errorClass}>{errors.email.message}</p>}
         </div>
 
         <div className="space-y-2">
-          <label
-            htmlFor="password"
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1"
-          >
+          <label htmlFor="password" className={labelClass}>
             Password
           </label>
           <input
             id="password"
             type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            className="w-full rounded-lg border border-border bg-background px-4 py-3.5 text-sm ring-offset-background transition-all placeholder:text-muted-foreground/50 focus:border-primary/60 focus:bg-primary/5 focus:outline-none focus:ring-4 focus:ring-primary/5 font-medium"
-            placeholder="Min. 8 characters"
+            autoComplete="new-password"
+            placeholder="Create a strong password"
+            {...register("password")}
+            className={inputClass}
           />
+          {errors.password && (
+            <p className={errorClass}>{errors.password.message}</p>
+          )}
+          <p className="text-xs font-medium leading-5 text-gray-500">
+            Use at least 12 characters with upper and lowercase letters, a
+            number, and a symbol.
+          </p>
         </div>
 
-        <div className="space-y-4 pt-2">
-          <p className="text-[11px] text-muted-foreground/70 text-center font-medium">
-            By signing up, you agree to our Terms of Service and Privacy Policy.
-          </p>
+        <div className="space-y-2">
+          <label htmlFor="confirmPassword" className={labelClass}>
+            Confirm Password
+          </label>
+          <input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Re-enter password"
+            {...register("confirmPassword")}
+            className={inputClass}
+          />
+          {errors.confirmPassword && (
+            <p className={errorClass}>{errors.confirmPassword.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-4 pt-1">
           <Button
             type="submit"
             disabled={loading}
             size="lg"
-            className="w-full py-4 text-sm font-bold shadow-[0_8px_24px_oklch(0.52_0.26_258_/_0.3)] h-auto"
+            className="h-12 w-full bg-[#D9FF00] text-base font-bold text-black hover:bg-[#c2e600]"
           >
-            {loading ? "Creating Account…" : "Generate Access Trace"}
+            {loading ? "Creating account…" : "Create account"}
           </Button>
+          <p className="text-center text-sm font-medium text-gray-500">
+            By continuing, you agree to our Terms &amp; Privacy Policy.
+          </p>
         </div>
       </form>
     </AuthPageShell>

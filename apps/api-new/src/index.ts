@@ -1,47 +1,93 @@
-import Fastify from "fastify";
-import { corsPlugin } from "./plugins/cors";
-import { cookiePlugin } from "./plugins/cookie";
-import { swaggerPlugin } from "./plugins/swagger";
-import { authPlugin } from "./plugins/auth";
-import { healthRoutes } from "./routes/health";
-import { authRoutes } from "./routes/auth";
-import { collectionRoutes } from "./routes/collections";
-import { flashcardRoutes } from "./routes/flashcards";
-import { userRoutes } from "./routes/users";
+import "reflect-metadata";
+import { Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { NestFactory } from "@nestjs/core";
+import {
+  FastifyAdapter,
+  type NestFastifyApplication,
+} from "@nestjs/platform-fastify";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import cookie from "@fastify/cookie";
+import { AppModule } from "./app.module";
 
-const PORT = Number(process.env.PORT) || 3001;
-const HOST = process.env.HOST ?? "0.0.0.0";
+async function bootstrap() {
+  const logger = new Logger("Bootstrap");
+  const bootstrapNodeEnv = process.env.NODE_ENV ?? "development";
 
-async function main() {
-  const app = Fastify({
-    logger: {
-      level: process.env.LOG_LEVEL ?? "info",
-      transport:
-        process.env.NODE_ENV === "development"
-          ? { target: "pino-pretty", options: { colorize: true } }
-          : undefined,
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({
+      logger: {
+        level: process.env.LOG_LEVEL ?? "info",
+        transport:
+          bootstrapNodeEnv === "development"
+            ? { target: "pino-pretty", options: { colorize: true } }
+            : undefined,
+      },
+    }),
+  );
+  const configService = app.get(ConfigService);
+  const nodeEnv = configService.getOrThrow<string>("NODE_ENV");
+  const betterAuthSecret =
+    configService.getOrThrow<string>("BETTER_AUTH_SECRET");
+  const corsOrigin = configService.getOrThrow<string>("CORS_ORIGIN");
+  const apiUrl = configService.getOrThrow<string>("API_URL");
+  const port = configService.getOrThrow<number>("PORT");
+
+  await app.register(cookie as never, {
+    secret: betterAuthSecret,
+    parseOptions: {
+      httpOnly: true,
+      secure: nodeEnv === "production",
+      sameSite: "lax",
+      path: "/",
     },
   });
 
-  // ── Global plugins (order matters) ──────────────────────────────────────
-  await app.register(corsPlugin);
-  await app.register(cookiePlugin);
-  await app.register(swaggerPlugin);
-  await app.register(authPlugin);
+  app.enableCors({
+    origin: corsOrigin,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+    exposedHeaders: ["Set-Cookie"],
+  });
 
-  // ── Routes ──────────────────────────────────────────────────────────────
-  await app.register(healthRoutes);
-  await app.register(authRoutes, { prefix: "/api/auth" });
-  await app.register(collectionRoutes, { prefix: "/api/v1/collections" });
-  await app.register(flashcardRoutes, { prefix: "/api/v1/flashcards" });
-  await app.register(userRoutes, { prefix: "/api/v1/users" });
+  const enableDocs =
+    nodeEnv !== "production" || process.env.ENABLE_DOCS === "true";
 
-  // ── Start ───────────────────────────────────────────────────────────────
-  await app.ready();
-  await app.listen({ port: PORT, host: HOST });
+  if (enableDocs) {
+    const config = new DocumentBuilder()
+      .setTitle("Advanced Quiz API")
+      .setDescription(
+        "Flashcard and spaced-repetition API powered by NestJS, Fastify, Prisma, and Better Auth",
+      )
+      .setVersion("0.1.0")
+      .addServer(
+        apiUrl,
+        nodeEnv === "production" ? "Production" : "Development",
+      )
+      .addCookieAuth("better-auth.session_token", {
+        type: "apiKey",
+        in: "cookie",
+        name: "better-auth.session_token",
+        description: "Better Auth session cookie",
+      })
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup("docs", app, document);
+  }
+
+  await app.listen(port, "0.0.0.0");
+  logger.log(`API listening on ${apiUrl}`);
 }
 
-main().catch((err) => {
-  console.error("Fatal error starting server:", err);
+bootstrap().catch((error: unknown) => {
+  if (error instanceof Error) {
+    console.error("Fatal error starting server:", error.message);
+    if (error.stack) console.error(error.stack);
+  } else {
+    console.error("Fatal error starting server:", error);
+  }
   process.exit(1);
 });

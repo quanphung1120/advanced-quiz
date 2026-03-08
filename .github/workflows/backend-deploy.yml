@@ -5,13 +5,13 @@ on:
     branches:
       - main
     paths:
-      - "apps/api/**"
+      - "apps/api-new/**"
       - ".github/workflows/backend-deploy.yml" # Rebuild if workflow changes
   pull_request:
     branches:
       - main
     paths:
-      - "apps/api/**"
+      - "apps/api-new/**"
   workflow_dispatch:
 
 env:
@@ -54,7 +54,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./apps/api
+          context: ./apps/api-new
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

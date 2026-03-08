@@ -1,5 +1,4 @@
 import { Library, Pencil, Plus, Trash2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import type { Flashcard } from "@/features/flashcards/api/flashcards-api";
 
@@ -11,26 +10,6 @@ type FlashcardStackProps = {
   onDelete: (card: Flashcard) => void;
 };
 
-const container = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-    },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const },
-  },
-  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } },
-};
-
 export function FlashcardStack({
   flashcards,
   canEdit,
@@ -40,127 +19,117 @@ export function FlashcardStack({
 }: FlashcardStackProps) {
   if (flashcards.length === 0) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-xl border border-dashed border-border bg-card/40 px-6 py-24 text-center space-y-6"
-      >
+      <div className="rounded-sm border border-dashed border-border bg-muted/20 px-6 py-20 text-center space-y-5">
         <div className="flex justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/20 border border-border">
-            <Library className="h-8 w-8 text-muted-foreground/60" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-muted/30 border border-border">
+            <Library className="h-5 w-5 text-muted-foreground/60" />
           </div>
         </div>
-        <div className="space-y-2 max-w-sm mx-auto">
-          <h3 className="font-display text-2xl font-black tracking-tight">
-            Empty Knowledge Base
+        <div className="space-y-1.5 max-w-sm mx-auto">
+          <h3 className="text-sm font-semibold text-foreground">
+            No cards yet
           </h3>
-          <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-            This collection has no cards yet. Knowledge points are the building
-            blocks of deep learning.
+          <p className="text-[12px] leading-6 text-muted-foreground">
+            Add your first flashcard to get started.
           </p>
         </div>
         {canEdit && (
-          <Button
-            onClick={onCreate}
-            size="lg"
-            className="gap-2 shadow-[0_8px_32px_oklch(0.52_0.26_258_/_0.2)]"
-          >
-            <Plus className="h-4 w-4" />
-            Create First Card
+          <Button onClick={onCreate} size="md" className="gap-2">
+            <Plus className="h-3.5 w-3.5" />
+            Add First Card
           </Button>
         )}
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between px-1">
-        <div className="space-y-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-primary">
+    <div className="space-y-5">
+      {/* Section header */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-0.5">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.3em] text-primary/70">
             Content
           </p>
-          <h3 className="font-display text-3xl font-black tracking-tight">
-            Flashcard Stack
+          <h3 className="font-display text-xl font-bold tracking-tight text-foreground">
+            Cards
           </h3>
         </div>
-        <span className="rounded-md border border-border bg-muted/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          {flashcards.length} Total Points
+        <span className="rounded-sm border border-border bg-muted/30 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+          {flashcards.length} cards
         </span>
       </div>
 
-      <motion.div
-        variants={container}
-        initial="hidden"
-        animate="visible"
-        className="grid gap-4"
-      >
-        <AnimatePresence mode="popLayout">
-          {flashcards.map((card) => (
-            <motion.div
-              layout
-              key={card.id}
-              variants={item}
-              className="group relative rounded-xl border border-border bg-card/60 p-5 shadow-sm transition-all hover:border-primary/30 hover:shadow-[0_4px_24px_oklch(0.52_0.26_258_/_0.08)] backdrop-blur-sm overflow-hidden"
-            >
-              {/* Subtle hover accent */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+      {/* Card list */}
+      <div className="rounded-sm border border-border divide-y divide-border">
+        {flashcards.map((card, index) => (
+          <div
+            key={card.id}
+            className="group relative flex gap-4 px-4 py-4 transition-colors hover:bg-accent/40"
+          >
+            {/* Index number */}
+            <div className="shrink-0 flex h-6 w-6 items-center justify-center mt-0.5">
+              <span className="text-[10px] font-bold tabular-nums text-muted-foreground/40">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+            </div>
 
-              <div className="flex gap-6 relative z-10">
-                <div className="flex-1 space-y-4">
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary/70">
-                      Question
-                    </p>
-                    <p className="text-base font-bold leading-relaxed text-foreground tracking-tight">
-                      {card.question}
-                    </p>
-                  </div>
-                  <div className="space-y-1.5 pt-3 border-t border-border/40">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60">
-                      Answer
-                    </p>
-                    <p className="text-sm font-medium leading-relaxed text-muted-foreground">
-                      {card.answer}
-                    </p>
-                  </div>
-                </div>
-
-                {canEdit && (
-                  <div className="shrink-0 flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-10 w-10 p-0 rounded-lg hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20"
-                      onClick={() => onEdit(card)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-10 w-10 p-0 rounded-lg hover:bg-destructive/10 hover:text-destructive border border-transparent hover:border-destructive/20"
-                      onClick={() => onDelete(card)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
-                  </div>
-                )}
+            {/* Content */}
+            <div className="flex-1 min-w-0 space-y-2.5">
+              <div className="space-y-1">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.25em] text-muted-foreground/50">
+                  Question
+                </p>
+                <p className="text-[13px] font-medium leading-6 text-foreground">
+                  {card.question}
+                </p>
               </div>
-
-              {/* Interaction indicators */}
-              <div className="mt-4 flex items-center gap-3">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/50">
-                  Ready for review
-                </span>
+              <div className="space-y-1">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.25em] text-muted-foreground/50">
+                  Answer
+                </p>
+                <p className="text-[12px] leading-5 text-muted-foreground">
+                  {card.answer}
+                </p>
               </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </motion.div>
+            </div>
+
+            {/* Actions */}
+            {canEdit && (
+              <div className="shrink-0 flex items-start gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={() => onEdit(card)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  <span className="sr-only">Edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(card)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span className="sr-only">Delete</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Add card footer */}
+      {canEdit && (
+        <button
+          type="button"
+          onClick={onCreate}
+          className="flex w-full items-center gap-2 rounded-sm border border-dashed border-border px-4 py-3 text-[12px] font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add another card
+        </button>
+      )}
     </div>
   );
 }
