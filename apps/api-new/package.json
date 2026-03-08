@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bunx --bun prisma generate --config prisma.config.ts && bun run --watch src/index.ts",
     "build": "bunx --bun prisma generate --config prisma.config.ts && tsc -p tsconfig.json",
-    "start": "bun run dist/index.js",
+    "start": "bun run dist/src/index.js",
     "check-types": "bunx --bun prisma generate --config prisma.config.ts && tsc --noEmit",
     "db:generate": "bunx --bun prisma generate --config prisma.config.ts",
     "db:migrate": "bunx --bun prisma migrate dev --config prisma.config.ts",
