@@ -9,13 +9,13 @@ description: When working on advanced-quiz project
 
 - **Monorepo Architecture**: This is a Turborepo monorepo with `bun` as the package manager; always run commands from the root using `turbo` or navigate to specific `apps/` or `packages/` directories.
 - **Apps Structure**: Contains two primary apps: `apps/api-new` (NestJS/Fastify backend) and `apps/web-new` (Vite/React frontend).
-- **Shared Packages**: Shared configurations live in `packages/` (`config`, `contracts`, `ui`).
+- **Shared Packages**: Shared configurations live in `packages/` (`config`, `contracts`).
 
 ### NestJS Backend (`apps/api-new`)
 
 - **Framework**: NestJS with Fastify adapter.
 - **Database**: Prisma ORM with PostgreSQL.
-- **Authentication**: Better Auth with Prisma adapter.
+- **Authentication**: JWT-based auth with secure cookies.
 - **Validation**: Zod schemas shared via `@advanced-quiz/contracts`.
 - **API Documentation**: Swagger/OpenAPI enabled at `/docs`.
 
@@ -33,5 +33,5 @@ description: When working on advanced-quiz project
 - **Setup**: Run `bun install` at the root.
 - **Dev Server**: Run `bun run dev` from root to start both apps.
 - **Type Checking**: Run `bun run check-types` for all workspaces.
-- **Linting**: Run `bun run lint` (primarily for web and UI packages).
+- **Linting**: Run `bun run lint` for the web app.
 - **Database**: Use `bun run db:push` or `bun run db:migrate` to sync schema.

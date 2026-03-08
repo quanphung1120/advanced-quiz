@@ -11,7 +11,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly usersService: UsersService,
   ) {
     const secret = configService
-      ? configService.get<string>("BETTER_AUTH_SECRET")
+      ? configService.get<string>("AUTH_SECRET")
       : "secret";
     super({
       jwtFromRequest: (req: any) => {

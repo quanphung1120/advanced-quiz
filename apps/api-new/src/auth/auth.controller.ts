@@ -11,6 +11,7 @@ import {
   UseGuards,
   UsePipes,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import {
@@ -37,7 +38,10 @@ const REFRESH_COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 @ApiTags("auth")
 @Controller("api/auth")
 export class AuthController {
-  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
+  constructor(
+    @Inject(AuthService) private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   private setAuthCookies(
     reply: FastifyReply,
@@ -46,14 +50,14 @@ export class AuthController {
     reply.setCookie("access_token", tokens.accessToken, {
       path: "/",
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: this.configService.get("NODE_ENV") === "production",
       sameSite: "lax",
       maxAge: ACCESS_COOKIE_MAX_AGE_SECONDS,
     });
     reply.setCookie("refresh_token", tokens.refreshToken, {
       path: "/",
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: this.configService.get("NODE_ENV") === "production",
       sameSite: "lax",
       maxAge: REFRESH_COOKIE_MAX_AGE_SECONDS,
     });
@@ -63,13 +67,13 @@ export class AuthController {
     reply.clearCookie("access_token", {
       path: "/",
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: this.configService.get("NODE_ENV") === "production",
       sameSite: "lax",
     });
     reply.clearCookie("refresh_token", {
       path: "/",
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: this.configService.get("NODE_ENV") === "production",
       sameSite: "lax",
     });
   }

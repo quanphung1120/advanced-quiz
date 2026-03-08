@@ -521,7 +521,7 @@ export class AuthService {
   private hashSecret(value: string) {
     return createHmac(
       "sha256",
-      this.configService.getOrThrow<string>("BETTER_AUTH_SECRET"),
+      this.configService.getOrThrow<string>("AUTH_SECRET"),
     )
       .update(value)
       .digest("hex");

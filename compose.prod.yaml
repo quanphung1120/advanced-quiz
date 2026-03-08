@@ -28,8 +28,7 @@ services:
       NODE_ENV: production
       PORT: 3001
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-your_secure_password_here}@db:5432/advanced_quiz
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-your_32_character_minimum_secret}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://api.yourdomain.com}
+      AUTH_SECRET: ${AUTH_SECRET:-your_32_character_minimum_secret}
       API_URL: ${API_URL:-https://api.yourdomain.com}
       WEB_URL: ${WEB_URL:-https://yourdomain.com}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://yourdomain.com}

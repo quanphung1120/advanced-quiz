@@ -10,13 +10,13 @@
     "check-types": "bunx --bun prisma generate --config prisma.config.ts && tsc --noEmit",
     "db:generate": "bunx --bun prisma generate --config prisma.config.ts",
     "db:migrate": "bunx --bun prisma migrate dev --config prisma.config.ts",
+    "db:migrate:deploy": "bunx --bun prisma migrate deploy --config prisma.config.ts",
     "db:push": "bunx --bun prisma db push --config prisma.config.ts",
     "db:studio": "bunx --bun prisma studio --config prisma.config.ts"
   },
   "dependencies": {
     "@advanced-quiz/config": "workspace:*",
     "@advanced-quiz/contracts": "workspace:*",
-    "@better-auth/prisma-adapter": "^1.5.4",
     "@fastify/cookie": "^11.0.0",
     "@fastify/cors": "^11.0.0",
     "@nestjs/common": "^11.1.16",
@@ -29,17 +29,13 @@
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "bcrypt": "^6.0.0",
-    "better-auth": "^1.2.0",
-    "dotenv": "^17.3.1",
     "fastify": "^5.2.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-    "passport-local": "^1.0.0",
     "pg": "^8.20.0",
     "prisma": "^7.4.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "tsc-watch": "^7.2.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
@@ -47,7 +43,6 @@
     "@types/bun": "^1.3.10",
     "@types/node": "^22.0.0",
     "@types/passport-jwt": "^4.0.1",
-    "@types/passport-local": "^1.0.38",
     "pino-pretty": "^13.1.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.2"
