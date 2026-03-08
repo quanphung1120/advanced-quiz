@@ -1,4 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import { PrismaClient } from "../generated/prisma/client";
 
 type GlobalForPrisma = typeof globalThis & {
@@ -11,14 +12,19 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is required to initialize Prisma");
 }
 
+const pool = new Pool({
+  connectionString,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  max: 10,
+});
+
 const globalForPrisma = globalThis as GlobalForPrisma;
 
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    adapter: new PrismaPg({
-      connectionString,
-    }),
+    adapter: new PrismaPg(pool),
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 
