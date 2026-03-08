@@ -61,6 +61,7 @@ jobs:
           tags: ${{ env.WEB_IMAGE }}
           build-args: |
             VITE_API_URL=${{ vars.PROD_VITE_API_URL }}
+            VITE_CLOUDINARY_CLOUD_NAME=${{ vars.PROD_VITE_CLOUDINARY_CLOUD_NAME }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
