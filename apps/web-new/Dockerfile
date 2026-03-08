@@ -17,6 +17,8 @@ RUN bun install --frozen-lockfile
 
 # Build the project
 COPY --from=pruner /app/out/full/ .
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 RUN bun turbo build --filter=@advanced-quiz/web
 
 # Development stage (used by docker-compose)
