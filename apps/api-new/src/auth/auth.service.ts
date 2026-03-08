@@ -49,7 +49,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly authMailerService: AuthMailerService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async register(data: SignUpBody): Promise<RegisterResponse> {
     const existingUser = await this.usersService.findByEmail(data.email);
@@ -70,7 +70,8 @@ export class AuthService {
       };
     }
 
-    const user = await this.usersService.create(data);
+    const { email, name, password } = data;
+    const user = await this.usersService.create({ email, name, password });
     await this.issueEmailVerificationOtp(user);
 
     return {

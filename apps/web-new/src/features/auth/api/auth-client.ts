@@ -82,14 +82,9 @@ export const signUp = {
     data: SignUpBody,
   ): Promise<MutationResult<RegisterResponse>> => {
     try {
-      const registerData = {
-        name: data.name,
-        email: data.email,
-        password: data.password,
-      };
       const response = await api.post<RegisterResponse>(
         "/api/auth/register",
-        registerData,
+        data,
       );
       return { data: response.data, error: null };
     } catch (error) {
