@@ -17,8 +17,10 @@ RUN bun install --frozen-lockfile
 COPY --from=builder /app/out/full/ .
 
 ARG VITE_API_URL
+ARG VITE_CLOUDINARY_CLOUD_NAME
 ENV NODE_ENV=production
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_CLOUDINARY_CLOUD_NAME=${VITE_CLOUDINARY_CLOUD_NAME}
 
 RUN bun run build --filter=@advanced-quiz/web
 
