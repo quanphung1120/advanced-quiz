@@ -22,13 +22,17 @@
     "check-types": "bun run db:generate && tsc --noEmit"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "@prisma/adapter-neon": "^7.4.2",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "@types/pg": "^8.18.0",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
     "prisma": "^7.4.2",
     "typescript": "^5.9.2"
   }
