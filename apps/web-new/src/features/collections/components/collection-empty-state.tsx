@@ -1,5 +1,4 @@
 import { Layers3, Plus, Search } from "lucide-react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 type CollectionEmptyStateProps = {
@@ -7,26 +6,12 @@ type CollectionEmptyStateProps = {
   onCreate: () => void;
 };
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
-  },
-};
-
 export function CollectionEmptyState({
   hasSearch,
   onCreate,
 }: CollectionEmptyStateProps) {
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={fadeUp}
-      className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 px-6 py-20 text-center"
-    >
+    <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 px-6 py-20 text-center">
       <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary shadow-[0_0_40px_oklch(0.52_0.26_258_/_0.15)]">
         {hasSearch ? (
           <Search className="h-8 w-8" />
@@ -56,6 +41,6 @@ export function CollectionEmptyState({
           Create Collection
         </Button>
       )}
-    </motion.div>
+    </div>
   );
 }

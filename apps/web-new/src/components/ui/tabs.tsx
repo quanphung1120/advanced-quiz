@@ -12,7 +12,7 @@ export function TabsList({
   return (
     <BaseTabs.List
       className={clsx(
-        "relative inline-flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1",
+        "relative flex items-center gap-0 border-b border-border",
         className,
       )}
       {...props}
@@ -27,9 +27,10 @@ export function TabsTab({
   return (
     <BaseTabs.Tab
       className={clsx(
-        "relative z-10 cursor-pointer rounded-md px-5 py-1.5 text-sm font-medium text-muted-foreground tracking-tight transition-colors",
-        "data-[active]:text-primary-foreground",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "relative cursor-pointer px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground transition-colors",
+        "data-[active]:text-foreground",
+        "hover:text-foreground",
+        "focus-visible:outline-none",
         className,
       )}
       {...props}
@@ -44,8 +45,8 @@ export function TabsIndicator({
   return (
     <BaseTabs.Indicator
       className={clsx(
-        "absolute top-1 left-[var(--active-tab-left)] h-[calc(100%-8px)] w-[var(--active-tab-width)]",
-        "rounded-md bg-primary shadow-[0_0_12px_oklch(0.52_0.26_258_/_0.5)] transition-all duration-200",
+        "absolute bottom-[-1px] left-[var(--active-tab-left)] h-px w-[var(--active-tab-width)]",
+        "bg-foreground transition-all duration-200",
         className,
       )}
       {...props}

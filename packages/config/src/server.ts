@@ -12,6 +12,8 @@ const serverEnvSchema = sharedEnvSchema.extend({
   API_URL: z.string().url().default("http://localhost:3001"),
   WEB_URL: z.string().url().default("http://localhost:5173"),
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
+  RESEND_API_KEY: z.string().min(1),
+  RESEND_FROM_EMAIL: z.string().email(),
   PORT: z.coerce.number().default(3001),
 });
 

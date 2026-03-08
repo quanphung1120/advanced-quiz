@@ -1,0 +1,164 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { startTransition, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { useForm } from "react-hook-form";
+import {
+  resetPasswordBodySchema,
+  type ResetPasswordBody,
+} from "@advanced-quiz/contracts";
+import { Button } from "@/components/ui/button";
+import { resetPassword } from "@/features/auth/api/auth-client";
+import { AuthPageShell } from "./auth-page-shell";
+import {
+  errorClass,
+  errorPanelClass,
+  inputClass,
+  labelClass,
+  successPanelClass,
+} from "./auth-form-styles";
+
+export function ResetPasswordPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const token = useMemo(
+    () => searchParams.get("token")?.trim() ?? "",
+    [searchParams],
+  );
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ResetPasswordBody>({
+    resolver: zodResolver(resetPasswordBodySchema),
+    defaultValues: {
+      token,
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  async function onSubmit(data: ResetPasswordBody) {
+    if (!token) {
+      setError("This reset link is invalid or incomplete.");
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+
+    const result = await resetPassword({
+      token,
+      password: data.password,
+      confirmPassword: data.confirmPassword,
+    });
+
+    if (result.error) {
+      setError(result.error.message);
+      setLoading(false);
+      return;
+    }
+
+    setSuccess(result.data?.message ?? "Password updated successfully.");
+    setLoading(false);
+    startTransition(() => {
+      navigate("/sign-in");
+    });
+  }
+
+  return (
+    <AuthPageShell
+      title="Set a new password"
+      description="Choose a fresh password for your account and keep your old one retired."
+      footerText="Need a new reset email?"
+      footerActionLabel="Sign in"
+      footerActionTo="/sign-in"
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <input type="hidden" {...register("token")} value={token} />
+
+        {!token && (
+          <div className={errorPanelClass}>
+            This reset link is missing its token. Request a fresh recovery
+            email.
+          </div>
+        )}
+
+        {error && <div className={errorPanelClass}>{error}</div>}
+        {success && <div className={successPanelClass}>{success}</div>}
+
+        <div className="space-y-2">
+          <label htmlFor="password" className={labelClass}>
+            New password
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Create a strong password"
+            {...register("password", { required: "Password is required" })}
+            className={inputClass}
+          />
+          {errors.password && (
+            <p className={errorClass}>{errors.password.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="confirmPassword" className={labelClass}>
+            Confirm password
+          </label>
+          <input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Re-enter your new password"
+            {...register("confirmPassword", {
+              required: "Please confirm your password",
+            })}
+            className={inputClass}
+          />
+          {errors.confirmPassword && (
+            <p className={errorClass}>{errors.confirmPassword.message}</p>
+          )}
+          <p className="text-xs font-medium leading-5 text-gray-500">
+            Use at least 12 characters with upper and lowercase letters, a
+            number, and a symbol.
+          </p>
+        </div>
+
+        <Button
+          type="submit"
+          disabled={loading || !token}
+          size="lg"
+          className="h-12 w-full bg-[#D9FF00] text-base font-bold text-black hover:bg-[#c2e600]"
+        >
+          {loading ? "Updating password…" : "Update password"}
+        </Button>
+
+        <p className="text-center text-sm font-medium text-gray-500">
+          Return to{" "}
+          <Link
+            to="/forgot-password"
+            className="font-semibold text-white transition-colors hover:text-[#D9FF00]"
+          >
+            password recovery
+          </Link>{" "}
+          or{" "}
+          <Link
+            to="/sign-in"
+            className="font-semibold text-white transition-colors hover:text-[#D9FF00]"
+          >
+            sign in
+          </Link>
+          .
+        </p>
+      </form>
+    </AuthPageShell>
+  );
+}

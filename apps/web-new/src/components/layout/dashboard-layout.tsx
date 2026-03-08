@@ -6,6 +6,8 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
@@ -53,7 +55,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const initials = userName
     .split(" ")
     .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
+    .map((part: string) => part[0]?.toUpperCase() ?? "")
     .join("");
 
   const handleSignOut = async () => {
@@ -90,12 +92,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         )}
       </div>
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
-
       {/* Nav */}
       <nav className="flex-1 space-y-0.5">
-        <p className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-[0.3em] text-muted-foreground/60">
+        <p className="mb-2 px-1 text-[9px] font-semibold uppercase tracking-[0.3em] text-muted-foreground/60">
           Navigation
         </p>
         <NavLink
@@ -104,14 +103,14 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           onClick={onClose}
           className={({ isActive }) =>
             [
-              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+              "flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-[13px] font-medium transition-all",
               isActive
                 ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_oklch(0.88_0.28_111_/_0.2)]"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             ].join(" ")
           }
         >
-          <LayoutDashboard className="h-4 w-4 shrink-0" />
+          <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
           Dashboard
         </NavLink>
         <NavLink
@@ -119,14 +118,14 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           onClick={onClose}
           className={({ isActive }) =>
             [
-              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+              "flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-[13px] font-medium transition-all",
               isActive
                 ? "text-muted-foreground hover:bg-accent hover:text-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             ].join(" ")
           }
         >
-          <BrainCircuit className="h-4 w-4 shrink-0" />
+          <BrainCircuit className="h-3.5 w-3.5 shrink-0" />
           Collections
         </NavLink>
       </nav>
@@ -186,14 +185,32 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   );
 }
 
-export function DashboardLayout({ children }: PropsWithChildren) {
+export function DashboardLayout({
+  children,
+  isLoading = false,
+}: PropsWithChildren<{ isLoading?: boolean }>) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return localStorage.getItem("sidebar-collapsed") === "true";
+  });
+
+  const toggleCollapse = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem("sidebar-collapsed", String(newState));
+  };
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
-      {/* ── Desktop sidebar ── */}
+      {/* Desktop sidebar - hidden when collapsed */}
       <aside
-        className="fixed inset-y-0 left-0 z-30 hidden border-r border-border bg-card/80 backdrop-blur-xl lg:flex"
+        className={`fixed inset-y-0 left-0 z-30 hidden border-r border-border bg-card/80 backdrop-blur-xl lg:flex transition-all duration-200 ${
+          isCollapsed ? "-translate-x-full" : "translate-x-0"
+        }`}
         style={{ width: SIDEBAR_WIDTH }}
       >
         <div className="w-full overflow-y-auto">
@@ -201,7 +218,7 @@ export function DashboardLayout({ children }: PropsWithChildren) {
         </div>
       </aside>
 
-      {/* ── Mobile sidebar + backdrop ── */}
+      {/* Mobile sidebar + backdrop */}
       <AnimatePresence>
         {isMobileSidebarOpen && (
           <>
@@ -231,14 +248,12 @@ export function DashboardLayout({ children }: PropsWithChildren) {
         )}
       </AnimatePresence>
 
-      {/* ── Main area ── */}
+      {/* Main area */}
       <div
-        className="relative flex min-h-screen flex-col"
-        style={{ paddingLeft: `${SIDEBAR_WIDTH}px` }}
+        className={`relative flex min-h-screen flex-col transition-all duration-200 ${
+          isCollapsed ? "lg:pl-0" : "lg:pl-64"
+        }`}
       >
-        {/* Override padding on mobile */}
-        <div className="lg:hidden" style={{ paddingLeft: 0 }} />
-
         {/* Mobile topbar */}
         <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/80 px-4 py-3.5 backdrop-blur-xl lg:hidden">
           <button
@@ -258,10 +273,31 @@ export function DashboardLayout({ children }: PropsWithChildren) {
           </div>
         </header>
 
+        {/* Desktop topbar with collapse toggle */}
+        <header className="sticky top-0 z-10 hidden items-center gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-xl lg:flex">
+          <button
+            type="button"
+            onClick={toggleCollapse}
+            className="inline-flex items-center gap-2 rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+        </header>
+
         {/* Page content */}
         <main className="flex-1">
           <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-6">
-            {children}
+            {isLoading ? (
+              <div className="flex h-[60vh] items-center justify-center">
+                <div className="h-10 w-10 rounded-full border-2 border-muted border-t-foreground animate-spin" />
+              </div>
+            ) : (
+              children
+            )}
           </div>
         </main>
       </div>

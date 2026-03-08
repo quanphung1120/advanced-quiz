@@ -1,30 +1,90 @@
-import { startTransition, type FormEvent, useState } from "react";
-import { useNavigate } from "react-router";
-import { signIn } from "@/features/auth/api/auth-client";
-import { AuthPageShell } from "./auth-page-shell";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
+import { startTransition, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { Link, useNavigate } from "react-router";
+import { signInBodySchema, type SignInBody } from "@advanced-quiz/contracts";
 import { Button } from "@/components/ui/button";
+import { resendVerification, signIn } from "@/features/auth/api/auth-client";
+import { AuthPageShell } from "./auth-page-shell";
+import {
+  errorClass,
+  errorPanelClass,
+  inputClass,
+  labelClass,
+  successPanelClass,
+} from "./auth-form-styles";
 
 export function SignInPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resendState, setResendState] = useState<{
+    loading: boolean;
+    message: string | null;
+    error: string | null;
+  }>({
+    loading: false,
+    message: null,
+    error: null,
+  });
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<SignInBody>({
+    resolver: zodResolver(signInBodySchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  const emailValue = useWatch({
+    control,
+    name: "email",
+    defaultValue: "",
+  });
+  const showVerificationActions =
+    error?.toLowerCase().includes("verify") ||
+    error?.toLowerCase().includes("verification") ||
+    false;
+
+  async function onSubmit(data: SignInBody) {
     setError(null);
+    setResendState({ loading: false, message: null, error: null });
     setLoading(true);
 
     try {
-      const result = await signIn.email({ email, password });
+      const result = await signIn.email(data);
       if (result.error) {
-        setError(result.error.message ?? "Authentication failed. Please check your credentials.");
-      } else {
-        startTransition(() => {
-          navigate("/dashboard");
-        });
+        if (
+          result.error.requiresEmailVerification ||
+          result.error.code === "EMAIL_VERIFICATION_REQUIRED"
+        ) {
+          const email = result.error.email ?? data.email.trim();
+          startTransition(() => {
+            navigate(`/verify-email?email=${encodeURIComponent(email)}`, {
+              state: {
+                notice:
+                  "We sent a verification code to your email. Enter it to finish signing in.",
+              },
+            });
+          });
+          return;
+        }
+
+        setError(
+          result.error.message ??
+            "Authentication failed. Please check your credentials.",
+        );
+        return;
       }
+
+      await queryClient.invalidateQueries({ queryKey: ["session"] });
+      startTransition(() => {
+        navigate("/dashboard");
+      });
     } catch {
       setError("An unexpected error occurred during sign in.");
     } finally {
@@ -32,69 +92,113 @@ export function SignInPage() {
     }
   }
 
+  async function handleResendVerification() {
+    if (!emailValue) {
+      setResendState({
+        loading: false,
+        message: null,
+        error: "Enter your email address first.",
+      });
+      return;
+    }
+
+    setResendState({ loading: true, message: null, error: null });
+    const result = await resendVerification({ email: emailValue });
+    setResendState({
+      loading: false,
+      message: result.data?.message ?? null,
+      error: result.error?.message ?? null,
+    });
+  }
+
   return (
     <AuthPageShell
-      title="Welcome Back"
-      description="Study system ready. Sign in to continue your progress."
+      title="Welcome back"
+      description="Sign in to continue your progress."
       footerText="Don't have an account?"
-      footerActionLabel="Create account"
+      footerActionLabel="Create one"
       footerActionTo="/sign-up"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3.5 text-[13px] font-semibold text-destructive/90 transition-all animate-in fade-in slide-in-from-top-2">
-            {error}
+          <div className={errorPanelClass}>
+            <p>{error}</p>
+            {showVerificationActions && (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Link
+                  to={`/verify-email?email=${encodeURIComponent(emailValue ?? "")}`}
+                  className="text-sm font-semibold text-white transition-colors hover:text-[#D9FF00]"
+                >
+                  Enter verification code
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={resendState.loading}
+                  className="text-sm font-semibold text-[#D9FF00] transition-colors hover:text-[#f0ff7a] disabled:cursor-not-allowed disabled:text-gray-500"
+                >
+                  {resendState.loading ? "Resending…" : "Resend code"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
+        {resendState.message && (
+          <div className={successPanelClass}>{resendState.message}</div>
+        )}
+
+        {resendState.error && (
+          <div className={errorPanelClass}>{resendState.error}</div>
+        )}
+
         <div className="space-y-2">
-          <label
-            htmlFor="email"
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1"
-          >
-            Email Address
+          <label htmlFor="email" className={labelClass}>
+            Email
           </label>
           <input
             id="email"
             type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            className="w-full rounded-lg border border-border bg-background px-4 py-3.5 text-sm ring-offset-background transition-all placeholder:text-muted-foreground/50 focus:border-primary/60 focus:bg-primary/5 focus:outline-none focus:ring-4 focus:ring-primary/5 font-medium"
-            placeholder="name@company.com"
+            autoComplete="email"
+            placeholder="name@example.com"
+            {...register("email")}
+            className={inputClass}
           />
+          {errors.email && <p className={errorClass}>{errors.email.message}</p>}
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <label
-              htmlFor="password"
-              className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground"
-            >
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className={labelClass}>
               Password
             </label>
-            <button type="button" className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80 hover:text-primary transition-colors">
+            <Link
+              to="/forgot-password"
+              className="text-sm font-semibold text-gray-500 transition-colors hover:text-[#D9FF00]"
+            >
               Forgot?
-            </button>
+            </Link>
           </div>
           <input
             id="password"
             type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            className="w-full rounded-lg border border-border bg-background px-4 py-3.5 text-sm ring-offset-background transition-all placeholder:text-muted-foreground/50 focus:border-primary/60 focus:bg-primary/5 focus:outline-none focus:ring-4 focus:ring-primary/5 font-medium"
+            autoComplete="current-password"
             placeholder="••••••••"
+            {...register("password")}
+            className={inputClass}
           />
+          {errors.password && (
+            <p className={errorClass}>{errors.password.message}</p>
+          )}
         </div>
 
         <Button
           type="submit"
           disabled={loading}
           size="lg"
-          className="w-full py-4 text-sm font-bold shadow-[0_8px_24px_oklch(0.52_0.26_258_/_0.3)] h-auto"
+          className="h-12 w-full bg-[#D9FF00] text-base font-bold text-black hover:bg-[#c2e600]"
         >
-          {loading ? "Authenticating…" : "Sign In to Workspace"}
+          {loading ? "Signing in…" : "Sign in"}
         </Button>
       </form>
     </AuthPageShell>

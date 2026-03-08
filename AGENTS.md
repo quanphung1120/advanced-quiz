@@ -14,9 +14,6 @@ This file is for agentic coding tools working in `advanced-quiz`.
   - `packages/config`: env parsing and config helpers
   - `packages/contracts`: shared Zod DTOs and API schemas
   - `packages/ui`: small shared React UI package
-- Legacy/secondary apps still present:
-  - `apps/api`: older Go-based API
-  - `apps/web`: older Next.js app
 
 ## Rule Files Scan
 
@@ -44,7 +41,6 @@ This file is for agentic coding tools working in `advanced-quiz`.
 - Build only shared config package from root: `turbo run check-types --filter=@advanced-quiz/config`
 - Build API directly inside `apps/api-new`: `bun run build`
 - Build web directly inside `apps/web-new`: `bun run build`
-- Build legacy Go API inside `apps/api`: `bun run build`
 
 ## Lint Commands
 
@@ -177,13 +173,6 @@ This file is for agentic coding tools working in `advanced-quiz`.
 - In React forms, surface user-friendly error messages and always clear loading state in `finally` blocks.
 - Do not silently swallow errors unless the code intentionally treats the failure as optional, such as session resolution.
 - Preserve auth redirect behavior in the shared Axios client when working on web auth flows.
-
-## Legacy Code Caveat
-
-- `apps/api-new` and `apps/web-new` are the primary targets for new work.
-- `apps/api` and `apps/web` still exist and use different stacks and conventions.
-- When touching legacy folders, follow the local style of that folder rather than forcing the new-app style onto it.
-- When unsure where new functionality belongs, prefer the `*-new` apps unless the task explicitly references the legacy ones.
 
 ## Agent Workflow Recommendations
 

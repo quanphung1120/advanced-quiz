@@ -34,6 +34,21 @@ export const sessionUserSchema = z.object({
 });
 export type SessionUser = z.infer<typeof sessionUserSchema>;
 
+export const passwordSchema = z
+  .string()
+  .min(12, "Password must be at least 12 characters")
+  .max(72, "Password must be 72 characters or fewer")
+  .regex(/[a-z]/, "Password must include a lowercase letter")
+  .regex(/[A-Z]/, "Password must include an uppercase letter")
+  .regex(/[0-9]/, "Password must include a number")
+  .regex(/[^A-Za-z0-9]/, "Password must include a symbol");
+export type Password = z.infer<typeof passwordSchema>;
+
+export const otpCodeSchema = z
+  .string()
+  .regex(/^\d{6}$/, "Verification code must be 6 digits");
+export type OtpCode = z.infer<typeof otpCodeSchema>;
+
 export const collectionCollaboratorSchema = z.object({
   id: z.string().uuid(),
   collectionId: z.string().uuid(),
@@ -101,18 +116,54 @@ export const collectionStatsSchema = z.object({
 });
 export type CollectionStats = z.infer<typeof collectionStatsSchema>;
 
-export const signUpBodySchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(8),
-});
+export const signUpBodySchema = z
+  .object({
+    name: z.string().min(1),
+    email: z.string().email(),
+    password: passwordSchema,
+    confirmPassword: passwordSchema,
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 export type SignUpBody = z.infer<typeof signUpBodySchema>;
 
 export const signInBodySchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(1),
 });
 export type SignInBody = z.infer<typeof signInBodySchema>;
+
+export const verifyEmailBodySchema = z.object({
+  email: z.string().email(),
+  otp: otpCodeSchema,
+});
+export type VerifyEmailBody = z.infer<typeof verifyEmailBodySchema>;
+
+export const resendVerificationBodySchema = z.object({
+  email: z.string().email(),
+});
+export type ResendVerificationBody = z.infer<
+  typeof resendVerificationBodySchema
+>;
+
+export const forgotPasswordBodySchema = z.object({
+  email: z.string().email(),
+});
+export type ForgotPasswordBody = z.infer<typeof forgotPasswordBodySchema>;
+
+export const resetPasswordBodySchema = z
+  .object({
+    token: z.string().min(1),
+    password: passwordSchema,
+    confirmPassword: passwordSchema,
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;
 
 export const createCollectionBodySchema = z.object({
   name: z.string().min(1).max(255),
@@ -220,6 +271,33 @@ export const searchUsersResponseSchema = z.object({
   emails: z.array(z.string().email()),
 });
 export type SearchUsersResponse = z.infer<typeof searchUsersResponseSchema>;
+
+export const refreshTokenBodySchema = z.object({
+  refresh_token: z.string(),
+});
+export type RefreshTokenBody = z.infer<typeof refreshTokenBodySchema>;
+
+export const registerResponseSchema = z.object({
+  email: z.string().email(),
+  message: z.string(),
+  requiresEmailVerification: z.literal(true),
+});
+export type RegisterResponse = z.infer<typeof registerResponseSchema>;
+
+export const signInResponseSchema = z.object({
+  user: sessionUserSchema,
+});
+export type SignInResponse = z.infer<typeof signInResponseSchema>;
+
+export const refreshTokenResponseSchema = z.object({
+  success: z.literal(true),
+});
+export type RefreshTokenResponse = z.infer<typeof refreshTokenResponseSchema>;
+
+export const authMessageResponseSchema = z.object({
+  message: z.string(),
+});
+export type AuthMessageResponse = z.infer<typeof authMessageResponseSchema>;
 
 export const apiErrorSchema = z.object({
   statusCode: z.number(),

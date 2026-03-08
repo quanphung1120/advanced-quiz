@@ -20,8 +20,15 @@
     "db:studio": "turbo run db:studio --filter=@advanced-quiz/api"
   },
   "devDependencies": {
+    "@types/pg": "^8.18.0",
     "prettier": "^3.6.2",
+    "prisma": "^7.4.2",
     "turbo": "^2.6.1",
     "typescript": "5.9.2"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.4.2",
+    "@prisma/client": "^7.4.2",
+    "pg": "^8.20.0"
   }
 }

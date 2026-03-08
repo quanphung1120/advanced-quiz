@@ -3,6 +3,7 @@ import type {
   ReviewRating,
   ReviewStatus,
 } from "@advanced-quiz/contracts";
+import type { Prisma } from "../../generated/prisma/index.js";
 
 const LEARNING_STEPS = [1, 10];
 const RELEARNING_STEPS = [10];
@@ -12,7 +13,7 @@ const MIN_EASE_FACTOR = 1.3;
 const MAX_INTERVAL = 365 * 1440;
 const MATURE_INTERVAL = 21 * 1440;
 
-type ReviewRecord = typeof import("./db/schema").flashcardReview.$inferSelect;
+type ReviewRecord = Prisma.FlashcardReviewGetPayload<object>;
 
 export function calculateNextReview(
   review: ReviewRecord,
@@ -135,9 +136,7 @@ function applyReviewState(
   next.interval = Math.min(next.interval, MAX_INTERVAL);
 }
 
-export function buildCollectionStats(
-  reviews: ReviewRecord[],
-): CollectionStats {
+export function buildCollectionStats(reviews: ReviewRecord[]): CollectionStats {
   const now = Date.now();
 
   const stats: CollectionStats = {

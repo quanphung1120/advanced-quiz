@@ -1,6 +1,5 @@
 import { useDeferredValue, useState } from "react";
 import { Plus, Search } from "lucide-react";
-import { motion, type Variants } from "framer-motion";
 import { CollectionCard } from "@/features/collections/components/collection-card";
 import { CollectionEmptyState } from "@/features/collections/components/collection-empty-state";
 import { CollectionFormModal } from "@/features/collections/components/collection-form-modal";
@@ -23,34 +22,6 @@ function matchesQuery(
     .toLowerCase();
   return haystack.includes(query);
 }
-
-const gridContainer: Variants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.05,
-    },
-  },
-};
-
-const gridItem: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-  },
-};
 
 export function DashboardPage() {
   const [searchValue, setSearchValue] = useState("");
@@ -75,12 +46,7 @@ export function DashboardPage() {
     <div className="space-y-10">
       {/* ── Page header ── */}
       <section className="mt-16 space-y-8">
-        <motion.div
-          className="flex flex-wrap items-end justify-between gap-6"
-          initial="hidden"
-          animate="visible"
-          variants={fadeUp}
-        >
+        <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
               Workspace
@@ -97,15 +63,10 @@ export function DashboardPage() {
             <Plus className="h-4 w-4" />
             New collection
           </Button>
-        </motion.div>
+        </div>
 
         {/* Search */}
-        <motion.label
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          className="mt-8 flex items-center gap-3 rounded-sm border border-border bg-muted/50 px-4 py-3.5 transition-all focus-within:border-primary/40 focus-within:bg-muted/60 focus-within:shadow-[0_0_20px_oklch(0.88_0.28_111_/_0.1)] group"
-        >
+        <label className="mt-8 flex items-center gap-3 rounded-sm border border-border bg-muted/50 px-4 py-3.5 transition-all focus-within:border-primary/40 focus-within:bg-muted/60 focus-within:shadow-[0_0_20px_oklch(0.88_0.28_111_/_0.1)] group">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input
             value={searchValue}
@@ -113,7 +74,7 @@ export function DashboardPage() {
             placeholder="Search collections by title or description…"
             className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground/60 text-foreground"
           />
-        </motion.label>
+        </label>
       </section>
 
       {/* ── Collections grid ── */}
@@ -149,18 +110,11 @@ export function DashboardPage() {
                 </span>
               </div>
 
-              <motion.div
-                className="grid gap-5 md:grid-cols-2 lg:grid-cols-3"
-                variants={gridContainer}
-                initial="hidden"
-                animate="visible"
-              >
+              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {filteredOwned.map((collection) => (
-                  <motion.div key={collection.id} variants={gridItem}>
-                    <CollectionCard collection={collection} />
-                  </motion.div>
+                  <CollectionCard key={collection.id} collection={collection} />
                 ))}
-              </motion.div>
+              </div>
             </section>
           )}
 
@@ -186,18 +140,11 @@ export function DashboardPage() {
                 </span>
               </div>
 
-              <motion.div
-                className="grid gap-5 md:grid-cols-2 lg:grid-cols-3"
-                variants={gridContainer}
-                initial="hidden"
-                animate="visible"
-              >
+              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {filteredShared.map((collection) => (
-                  <motion.div key={collection.id} variants={gridItem}>
-                    <CollectionCard collection={collection} />
-                  </motion.div>
+                  <CollectionCard key={collection.id} collection={collection} />
                 ))}
-              </motion.div>
+              </div>
             </section>
           )}
 
