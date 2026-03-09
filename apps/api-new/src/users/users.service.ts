@@ -1,23 +1,51 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
+import { Inject, Injectable } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import * as bcrypt from "bcrypt";
+import { and, asc, eq, gt, ilike, ne } from "drizzle-orm";
+import { type DatabaseClient, refreshTokens, users } from "@advanced-quiz/db";
+import { DATABASE } from "../database/database.service";
 
 const PASSWORD_SALT_ROUNDS = 12;
+const REFRESH_TOKEN_TTL_DAYS = 7;
+
+const USER_PUBLIC_SELECT = {
+  id: users.id,
+  name: users.name,
+  email: users.email,
+  emailVerified: users.emailVerified,
+  emailVerifiedAt: users.emailVerifiedAt,
+  passwordChangedAt: users.passwordChangedAt,
+  createdAt: users.createdAt,
+  updatedAt: users.updatedAt,
+} as const;
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(DATABASE) private readonly database: DatabaseClient) {}
 
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({
-      where: { email },
+    const [user] = await this.database
+      .select(USER_PUBLIC_SELECT)
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    return user ?? null;
+  }
+
+  /** Returns the full user row including hashed password — only for auth use. */
+  async findByEmailWithPassword(email: string) {
+    return this.database.query.users.findFirst({
+      where: eq(users.email, email),
     });
   }
 
   async findById(id: string) {
-    return this.prisma.user.findUnique({
-      where: { id },
-    });
+    const [user] = await this.database
+      .select(USER_PUBLIC_SELECT)
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    return user ?? null;
   }
 
   async create(data: { email: string; name: string; password?: string }) {
@@ -25,52 +53,53 @@ export class UsersService {
       ? await bcrypt.hash(data.password, PASSWORD_SALT_ROUNDS)
       : undefined;
 
-    return this.prisma.user.create({
-      data: {
+    const [createdUser] = await this.database
+      .insert(users)
+      .values({
+        id: randomUUID(),
         email: data.email,
         name: data.name,
         password: hashedPassword ?? "",
         emailVerified: false,
-      },
-    });
+      })
+      .returning(USER_PUBLIC_SELECT);
+
+    return createdUser;
   }
 
-  async findPasswordByUserId(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { password: true },
-    });
-    return user?.password;
-  }
-
-  async updateRefreshToken(userId: string, refreshToken: string | null) {
-    if (refreshToken === null) {
-      await this.prisma.refreshToken.deleteMany({
-        where: { userId },
-      });
-      return;
-    }
-
+  async storeRefreshToken(userId: string, refreshToken: string) {
     const hashedToken = await bcrypt.hash(refreshToken, PASSWORD_SALT_ROUNDS);
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+    expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_TTL_DAYS);
 
-    await this.prisma.refreshToken.create({
-      data: {
-        token: hashedToken,
-        userId: userId,
-        expiresAt: expiresAt,
-      },
+    // Replace all existing tokens to prevent unbounded accumulation.
+    await this.database
+      .delete(refreshTokens)
+      .where(eq(refreshTokens.userId, userId));
+    await this.database.insert(refreshTokens).values({
+      id: randomUUID(),
+      token: hashedToken,
+      userId,
+      expiresAt,
     });
+  }
+
+  async deleteAllRefreshTokens(userId: string) {
+    await this.database
+      .delete(refreshTokens)
+      .where(eq(refreshTokens.userId, userId));
   }
 
   async validateRefreshToken(userId: string, refreshToken: string) {
-    const tokens = await this.prisma.refreshToken.findMany({
-      where: {
-        userId,
-        expiresAt: { gt: new Date() },
-      },
-    });
+    const tokens = await this.database
+      .select()
+      .from(refreshTokens)
+      .where(
+        and(
+          eq(refreshTokens.userId, userId),
+          gt(refreshTokens.expiresAt, new Date()),
+        ),
+      );
 
     for (const token of tokens) {
       const isMatch = await bcrypt.compare(refreshToken, token.token);
@@ -82,28 +111,23 @@ export class UsersService {
   }
 
   async deleteRefreshToken(tokenId: string) {
-    await this.prisma.refreshToken.delete({
-      where: { id: tokenId },
-    });
+    await this.database
+      .delete(refreshTokens)
+      .where(eq(refreshTokens.id, tokenId));
   }
 
   async searchUserEmails(query: string, currentUserId: string) {
-    const users = await this.prisma.user.findMany({
-      where: {
-        email: {
-          contains: query,
-          mode: "insensitive",
-        },
-        NOT: {
-          id: currentUserId,
-        },
-      },
-      orderBy: {
-        email: "asc",
-      },
-      take: 10,
-    });
+    if (query.length < 3) {
+      return [];
+    }
 
-    return users.map((user) => user.email);
+    const rows = await this.database
+      .select({ email: users.email })
+      .from(users)
+      .where(and(ilike(users.email, `%${query}%`), ne(users.id, currentUserId)))
+      .orderBy(asc(users.email))
+      .limit(10);
+
+    return rows.map((user) => user.email);
   }
 }

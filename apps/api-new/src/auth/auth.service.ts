@@ -3,11 +3,13 @@ import {
   ConflictException,
   ForbiddenException,
   HttpException,
+  HttpStatus,
+  Inject,
   Injectable,
   InternalServerErrorException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { ConfigService, type ConfigType } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import type {
   ForgotPasswordBody,
@@ -21,10 +23,30 @@ import type {
   VerifyEmailBody,
 } from "@advanced-quiz/contracts";
 import * as bcrypt from "bcrypt";
-import { createHmac, randomBytes, randomInt } from "node:crypto";
-import { PrismaService } from "../prisma/prisma.service";
+import {
+  createHmac,
+  randomBytes,
+  randomInt,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
+import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import {
+  type DatabaseClient,
+  emailOtps,
+  passwordResetTokens,
+  refreshTokens,
+  users,
+} from "@advanced-quiz/db";
+import { DATABASE } from "../database/database.service";
 import { UsersService } from "../users/users.service";
 import { AuthMailerService } from "./auth.mailer";
+import type { JwtPayload } from "./auth.types";
+
+type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
 
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 const REFRESH_TOKEN_TTL = "7d";
@@ -34,22 +56,25 @@ const EMAIL_OTP_RESEND_COOLDOWN_SECONDS = 60;
 const PASSWORD_RESET_RESEND_COOLDOWN_SECONDS = 60;
 const MAX_OTP_ATTEMPTS = 5;
 
-type JwtPayload = {
-  sub: string;
-  email: string;
-  emailVerified: boolean;
-  type: "access" | "refresh";
-};
-
 @Injectable()
 export class AuthService {
+  private readonly authSecret: string;
+  private readonly webUrl: string;
+
   constructor(
+    @Inject(UsersService)
     private readonly usersService: UsersService,
+    @Inject(JwtService)
     private readonly jwtService: JwtService,
-    private readonly prisma: PrismaService,
+    @Inject(DATABASE) private readonly database: DatabaseClient,
+    @Inject(AuthMailerService)
     private readonly authMailerService: AuthMailerService,
-    private readonly configService: ConfigService,
-  ) { }
+    @Inject(ConfigService)
+    private configService: ConfigService,
+  ) {
+    this.authSecret = this.configService.getOrThrow<string>("AUTH_SECRET");
+    this.webUrl = this.configService.getOrThrow<string>("WEB_URL");
+  }
 
   async register(data: SignUpBody): Promise<RegisterResponse> {
     const existingUser = await this.usersService.findByEmail(data.email);
@@ -82,7 +107,7 @@ export class AuthService {
   }
 
   async signIn(data: SignInBody): Promise<SignInResponse & AuthTokens> {
-    const user = await this.usersService.findByEmail(data.email);
+    const user = await this.usersService.findByEmailWithPassword(data.email);
 
     if (!user) {
       throw new UnauthorizedException("Invalid credentials");
@@ -94,7 +119,11 @@ export class AuthService {
     }
 
     if (!user.emailVerified) {
-      await this.resendVerification({ email: user.email });
+      try {
+        await this.resendVerification({ email: user.email });
+      } catch {
+        // best-effort resend; proceed to throw the verification-required error
+      }
       throw new ForbiddenException({
         statusCode: 403,
         error: "Forbidden",
@@ -121,14 +150,12 @@ export class AuthService {
       return this.createAuthenticatedSession(user);
     }
 
-    const otpRecord = await this.prisma.emailOtp.findFirst({
-      where: {
-        userId: user.id,
-        purpose: "email_verification",
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    const otpRecord = await this.database.query.emailOtps.findFirst({
+      where: and(
+        eq(emailOtps.userId, user.id),
+        eq(emailOtps.purpose, "email_verification"),
+      ),
+      orderBy: [desc(emailOtps.createdAt)],
     });
 
     const now = new Date();
@@ -138,44 +165,53 @@ export class AuthService {
     }
 
     const codeHash = this.hashSecret(data.otp);
-    if (otpRecord.codeHash !== codeHash) {
-      const attempts = otpRecord.attempts + 1;
+    const hashesMatch = timingSafeEqual(
+      Buffer.from(otpRecord.codeHash, "hex"),
+      Buffer.from(codeHash, "hex"),
+    );
+    if (!hashesMatch) {
+      const [updated] = await this.database
+        .update(emailOtps)
+        .set({ attempts: sql`${emailOtps.attempts} + 1` })
+        .where(eq(emailOtps.id, otpRecord.id))
+        .returning({ attempts: emailOtps.attempts });
 
-      if (attempts >= MAX_OTP_ATTEMPTS) {
-        await this.prisma.emailOtp.deleteMany({
-          where: {
-            userId: user.id,
-            purpose: "email_verification",
-          },
-        });
-      } else {
-        await this.prisma.emailOtp.update({
-          where: { id: otpRecord.id },
-          data: { attempts },
-        });
+      if ((updated?.attempts ?? 0) >= MAX_OTP_ATTEMPTS) {
+        await this.database
+          .delete(emailOtps)
+          .where(
+            and(
+              eq(emailOtps.userId, user.id),
+              eq(emailOtps.purpose, "email_verification"),
+            ),
+          );
       }
 
       throw new BadRequestException("Invalid or expired verification code");
     }
 
-    const verifiedUser = await this.prisma.$transaction(async (tx) => {
-      const updatedUser = await tx.user.update({
-        where: { id: user.id },
-        data: {
-          emailVerified: true,
-          emailVerifiedAt: now,
-        },
-      });
+    const [verifiedUser] = await this.database
+      .update(users)
+      .set({
+        emailVerified: true,
+        emailVerifiedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(users.id, user.id))
+      .returning();
 
-      await tx.emailOtp.deleteMany({
-        where: {
-          userId: user.id,
-          purpose: "email_verification",
-        },
-      });
+    if (!verifiedUser) {
+      throw new InternalServerErrorException("Unable to verify account");
+    }
 
-      return updatedUser;
-    });
+    await this.database
+      .delete(emailOtps)
+      .where(
+        and(
+          eq(emailOtps.userId, user.id),
+          eq(emailOtps.purpose, "email_verification"),
+        ),
+      );
 
     return this.createAuthenticatedSession(verifiedUser);
   }
@@ -190,14 +226,12 @@ export class AuthService {
       };
     }
 
-    const existingOtp = await this.prisma.emailOtp.findFirst({
-      where: {
-        userId: user.id,
-        purpose: "email_verification",
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    const existingOtp = await this.database.query.emailOtps.findFirst({
+      where: and(
+        eq(emailOtps.userId, user.id),
+        eq(emailOtps.purpose, "email_verification"),
+      ),
+      orderBy: [desc(emailOtps.createdAt)],
     });
 
     if (
@@ -231,15 +265,14 @@ export class AuthService {
       };
     }
 
-    const existingToken = await this.prisma.passwordResetToken.findFirst({
-      where: {
-        userId: user.id,
-        usedAt: null,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const existingToken =
+      await this.database.query.passwordResetTokens.findFirst({
+        where: and(
+          eq(passwordResetTokens.userId, user.id),
+          isNull(passwordResetTokens.usedAt),
+        ),
+        orderBy: [desc(passwordResetTokens.createdAt)],
+      });
 
     if (
       existingToken &&
@@ -254,28 +287,22 @@ export class AuthService {
       };
     }
 
-    await this.prisma.passwordResetToken.deleteMany({
-      where: {
-        userId: user.id,
-      },
-    });
+    await this.database
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.userId, user.id));
 
     const resetToken = this.generateResetToken();
     const resetTokenHash = this.hashSecret(resetToken);
     const expiresAt = this.minutesFromNow(PASSWORD_RESET_EXPIRY_MINUTES);
 
-    await this.prisma.passwordResetToken.create({
-      data: {
-        userId: user.id,
-        tokenHash: resetTokenHash,
-        expiresAt,
-      },
+    await this.database.insert(passwordResetTokens).values({
+      id: randomUUID(),
+      userId: user.id,
+      tokenHash: resetTokenHash,
+      expiresAt,
     });
 
-    const resetUrl = new URL(
-      "/reset-password",
-      this.configService.getOrThrow<string>("WEB_URL"),
-    );
+    const resetUrl = new URL("/reset-password", this.webUrl);
     resetUrl.searchParams.set("token", resetToken);
 
     try {
@@ -287,12 +314,14 @@ export class AuthService {
         idempotencyKey: `password-reset:${resetTokenHash}`,
       });
     } catch {
-      await this.prisma.passwordResetToken.deleteMany({
-        where: {
-          userId: user.id,
-          tokenHash: resetTokenHash,
-        },
-      });
+      await this.database
+        .delete(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.userId, user.id),
+            eq(passwordResetTokens.tokenHash, resetTokenHash),
+          ),
+        );
       throw new InternalServerErrorException(
         "Unable to send password reset email",
       );
@@ -306,18 +335,17 @@ export class AuthService {
 
   async resetPassword(data: ResetPasswordBody) {
     const tokenHash = this.hashSecret(data.token);
-    const resetRecord = await this.prisma.passwordResetToken.findFirst({
-      where: {
-        tokenHash,
-        usedAt: null,
-        expiresAt: {
-          gt: new Date(),
-        },
+    const now = new Date();
+
+    const resetRecord = await this.database.query.passwordResetTokens.findFirst(
+      {
+        where: and(
+          eq(passwordResetTokens.tokenHash, tokenHash),
+          isNull(passwordResetTokens.usedAt),
+          gt(passwordResetTokens.expiresAt, now),
+        ),
       },
-      include: {
-        user: true,
-      },
-    });
+    );
 
     if (!resetRecord) {
       throw new BadRequestException("Invalid or expired password reset link");
@@ -325,36 +353,27 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(data.password, 12);
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: resetRecord.userId },
-        data: {
+    await this.database.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({
           password: passwordHash,
-          passwordChangedAt: new Date(),
-        },
-      });
+          passwordChangedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(users.id, resetRecord.userId));
 
-      await tx.passwordResetToken.update({
-        where: { id: resetRecord.id },
-        data: {
-          usedAt: new Date(),
-        },
-      });
+      await tx
+        .delete(passwordResetTokens)
+        .where(eq(passwordResetTokens.id, resetRecord.id));
 
-      await tx.passwordResetToken.deleteMany({
-        where: {
-          userId: resetRecord.userId,
-          id: {
-            not: resetRecord.id,
-          },
-        },
-      });
+      await tx
+        .delete(passwordResetTokens)
+        .where(eq(passwordResetTokens.userId, resetRecord.userId));
 
-      await tx.refreshToken.deleteMany({
-        where: {
-          userId: resetRecord.userId,
-        },
-      });
+      await tx
+        .delete(refreshTokens)
+        .where(eq(refreshTokens.userId, resetRecord.userId));
     });
 
     return {
@@ -388,7 +407,7 @@ export class AuthService {
   }
 
   async logout(userId: string) {
-    await this.usersService.updateRefreshToken(userId, null);
+    await this.usersService.deleteAllRefreshTokens(userId);
   }
 
   private async issueEmailVerificationOtp(user: {
@@ -396,14 +415,12 @@ export class AuthService {
     email: string;
     name: string;
   }) {
-    const existingOtp = await this.prisma.emailOtp.findFirst({
-      where: {
-        userId: user.id,
-        purpose: "email_verification",
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    const existingOtp = await this.database.query.emailOtps.findFirst({
+      where: and(
+        eq(emailOtps.userId, user.id),
+        eq(emailOtps.purpose, "email_verification"),
+      ),
+      orderBy: [desc(emailOtps.createdAt)],
     });
 
     if (
@@ -415,7 +432,7 @@ export class AuthService {
     ) {
       throw new HttpException(
         "Please wait before requesting another verification code",
-        429,
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
@@ -423,21 +440,31 @@ export class AuthService {
     const codeHash = this.hashSecret(otp);
     const expiresAt = this.minutesFromNow(EMAIL_OTP_EXPIRY_MINUTES);
 
-    await this.prisma.emailOtp.deleteMany({
-      where: {
-        userId: user.id,
-        purpose: "email_verification",
-      },
-    });
+    await this.database
+      .delete(emailOtps)
+      .where(
+        and(
+          eq(emailOtps.userId, user.id),
+          eq(emailOtps.purpose, "email_verification"),
+        ),
+      );
 
-    const otpRecord = await this.prisma.emailOtp.create({
-      data: {
+    const [otpRecord] = await this.database
+      .insert(emailOtps)
+      .values({
+        id: randomUUID(),
         userId: user.id,
         purpose: "email_verification",
         codeHash,
         expiresAt,
-      },
-    });
+      })
+      .returning({ id: emailOtps.id });
+
+    if (!otpRecord) {
+      throw new InternalServerErrorException(
+        "Unable to create verification request",
+      );
+    }
 
     try {
       await this.authMailerService.sendVerificationOtp({
@@ -448,9 +475,9 @@ export class AuthService {
         idempotencyKey: `email-otp:${otpRecord.id}`,
       });
     } catch {
-      await this.prisma.emailOtp.delete({
-        where: { id: otpRecord.id },
-      });
+      await this.database
+        .delete(emailOtps)
+        .where(eq(emailOtps.id, otpRecord.id));
       throw new InternalServerErrorException(
         "Unable to send verification email",
       );
@@ -481,7 +508,7 @@ export class AuthService {
       expiresIn: REFRESH_TOKEN_TTL,
     });
 
-    await this.usersService.updateRefreshToken(user.id, refreshToken);
+    await this.usersService.storeRefreshToken(user.id, refreshToken);
 
     return {
       accessToken,
@@ -520,12 +547,7 @@ export class AuthService {
   }
 
   private hashSecret(value: string) {
-    return createHmac(
-      "sha256",
-      this.configService.getOrThrow<string>("AUTH_SECRET"),
-    )
-      .update(value)
-      .digest("hex");
+    return createHmac("sha256", this.authSecret).update(value).digest("hex");
   }
 
   private generateOtp() {
@@ -546,8 +568,3 @@ export class AuthService {
     return Date.now() - date.getTime() < cooldownSeconds * 1000;
   }
 }
-
-type AuthTokens = {
-  accessToken: string;
-  refreshToken: string;
-};

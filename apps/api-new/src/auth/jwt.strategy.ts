@@ -1,32 +1,34 @@
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { PassportStrategy } from "@nestjs/passport";
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import type { FastifyRequest } from "fastify";
 import { UsersService } from "../users/users.service";
+import type { JwtPayload } from "./auth.types";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
+    @Inject(ConfigService)
     private readonly configService: ConfigService,
+    @Inject(UsersService)
     private readonly usersService: UsersService,
   ) {
-    const secret = configService
-      ? configService.get<string>("AUTH_SECRET")
-      : "secret";
     super({
-      jwtFromRequest: (req: any) => {
-        let token = null;
+      jwtFromRequest: (req: FastifyRequest) => {
+        let token: string | null = null;
         if (req && req.cookies) {
-          token = req.cookies["access_token"];
+          token =
+            (req.cookies as Record<string, string>)["access_token"] ?? null;
         }
-        return token || ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+        return token ?? ExtractJwt.fromAuthHeaderAsBearerToken()(req as never);
       },
       ignoreExpiration: false,
-      secretOrKey: secret || "secret",
+      secretOrKey: configService.getOrThrow<string>("AUTH_SECRET"),
     });
   }
 
-  async validate(payload: any) {
+  async validate(payload: JwtPayload) {
     if (payload.type !== "access") {
       throw new UnauthorizedException();
     }

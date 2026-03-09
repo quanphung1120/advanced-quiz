@@ -1,24 +1,27 @@
+import type { CollaboratorRole, ReviewStatus } from "@advanced-quiz/contracts";
 import type {
-  CollectionRole,
-  CollaboratorRole,
-} from "@advanced-quiz/contracts";
-import type { Prisma } from "@advanced-quiz/db";
+  Collection,
+  CollectionCollaborator,
+  Flashcard,
+  FlashcardReview,
+  User,
+} from "@advanced-quiz/db";
 
 export function toIsoString(value: Date | null): string | null {
   return value ? value.toISOString() : null;
 }
 
-type CollaboratorWithUser = Prisma.CollectionCollaboratorGetPayload<{
-  include: { user: true };
-}>;
+type CollaboratorWithUser = CollectionCollaborator & {
+  user: Pick<User, "email">;
+};
 
-type CollectionWithCollaborators = Prisma.CollectionGetPayload<{
-  include: { collaborators: { include: { user: true } } };
-}>;
+type CollectionWithCollaborators = Collection & {
+  collaborators: CollaboratorWithUser[];
+};
 
-type ReviewWithFlashcard = Prisma.FlashcardReviewGetPayload<{
-  include: { flashcard: true };
-}>;
+type ReviewWithFlashcard = FlashcardReview & {
+  flashcard: Flashcard;
+};
 
 export function serializeCollaborator(collaborator: CollaboratorWithUser) {
   return {
@@ -44,9 +47,7 @@ export function serializeCollection(collection: CollectionWithCollaborators) {
   };
 }
 
-export function serializeFlashcard(
-  flashcard: Prisma.FlashcardGetPayload<object>,
-) {
+export function serializeFlashcard(flashcard: Flashcard) {
   return {
     id: flashcard.id,
     question: flashcard.question,
@@ -67,7 +68,7 @@ export function serializeReviewProgress(review: ReviewWithFlashcard) {
     easeFactor: review.easeFactor,
     interval: review.interval,
     dueAt: review.dueAt.toISOString(),
-    status: review.status as CollectionRole,
+    status: review.status as ReviewStatus,
     learningStep: review.learningStep,
     reviewCount: review.reviewCount,
     lapseCount: review.lapseCount,

@@ -3,7 +3,7 @@ import type {
   ReviewRating,
   ReviewStatus,
 } from "@advanced-quiz/contracts";
-import type { Prisma } from "@advanced-quiz/db";
+import type { FlashcardReview } from "@advanced-quiz/db";
 
 const LEARNING_STEPS = [1, 10];
 const RELEARNING_STEPS = [10];
@@ -13,7 +13,7 @@ const MIN_EASE_FACTOR = 1.3;
 const MAX_INTERVAL = 365 * 1440;
 const MATURE_INTERVAL = 21 * 1440;
 
-type ReviewRecord = Prisma.FlashcardReviewGetPayload<object>;
+type ReviewRecord = FlashcardReview;
 
 export function calculateNextReview(
   review: ReviewRecord,

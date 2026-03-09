@@ -1,12 +1,21 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import type { CollectionRole, ReviewRating } from "@advanced-quiz/contracts";
-import type { Prisma } from "@advanced-quiz/db";
-import { PrismaService } from "../prisma/prisma.service";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import {
+  collectionCollaborators,
+  collections,
+  type DatabaseClient,
+  flashcardReviews,
+  flashcards,
+  users,
+} from "@advanced-quiz/db";
+import { DATABASE } from "../database/database.service";
 import { buildCollectionStats, calculateNextReview } from "../lib/srs";
 import {
   type CollectionAccessRecord,
@@ -18,35 +27,37 @@ import {
 
 @Injectable()
 export class CollectionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(DATABASE) private readonly database: DatabaseClient) {}
 
   async listCollectionsForUser(userId: string) {
     const [ownedCollections, sharedLinks] = await Promise.all([
-      this.prisma.collection.findMany({
-        where: { ownerId: userId },
-        orderBy: { updatedAt: "desc" },
-        include: { collaborators: { include: { user: true } } },
+      this.database.query.collections.findMany({
+        where: eq(collections.ownerId, userId),
+        orderBy: (table, { desc }) => [desc(table.updatedAt)],
+        with: {
+          collaborators: {
+            with: { user: true },
+            orderBy: (table, { asc }) => [asc(table.createdAt)],
+          },
+        },
       }),
-      this.prisma.collectionCollaborator.findMany({
-        where: { userId },
-        include: { collection: true },
-        orderBy: { createdAt: "desc" },
+      this.database.query.collectionCollaborators.findMany({
+        where: eq(collectionCollaborators.userId, userId),
+        with: { collection: true },
+        orderBy: (table, { desc }) => [desc(table.createdAt)],
       }),
     ]);
 
     const sharedCollectionIds = sharedLinks.map((item) => item.collection.id);
     const collaborators =
       sharedCollectionIds.length > 0
-        ? await this.prisma.collectionCollaborator.findMany({
-            where: {
-              collectionId: {
-                in: sharedCollectionIds,
-              },
-            },
-            include: {
-              user: true,
-            },
-            orderBy: { createdAt: "asc" },
+        ? await this.database.query.collectionCollaborators.findMany({
+            where: inArray(
+              collectionCollaborators.collectionId,
+              sharedCollectionIds,
+            ),
+            with: { user: true },
+            orderBy: (table, { asc }) => [asc(table.createdAt)],
           })
         : [];
 
@@ -73,17 +84,24 @@ export class CollectionsService {
     userId: string,
     data: { name: string; description?: string; isPublic?: boolean },
   ) {
-    const collection = await this.prisma.collection.create({
-      data: {
+    const [collection] = await this.database
+      .insert(collections)
+      .values({
         name: data.name,
         description: data.description ?? null,
         isPublic: data.isPublic ?? false,
         ownerId: userId,
-      },
-      include: { collaborators: { include: { user: true } } },
-    });
+      })
+      .returning();
 
-    return serializeCollection(collection);
+    if (!collection) {
+      throw new BadRequestException("Unable to create collection");
+    }
+
+    return serializeCollection({
+      ...collection,
+      collaborators: [],
+    });
   }
 
   async getCollection(collectionId: string, userId: string) {
@@ -105,9 +123,11 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    const updated = await this.prisma.collection.update({
-      where: { id: collectionId },
-      data: {
+    const now = new Date();
+
+    await this.database
+      .update(collections)
+      .set({
         name: data.name ?? access.collection.name,
         description:
           data.description !== undefined
@@ -117,11 +137,16 @@ export class CollectionsService {
           data.isPublic !== undefined
             ? data.isPublic
             : access.collection.isPublic,
-      },
-      include: { collaborators: { include: { user: true } } },
-    });
+        updatedAt: now,
+      })
+      .where(eq(collections.id, collectionId));
 
-    return serializeCollection(updated);
+    const refreshedAccess = await this.getCollectionAccess(
+      collectionId,
+      userId,
+    );
+
+    return serializeCollection(refreshedAccess.collection);
   }
 
   async deleteCollection(collectionId: string, userId: string) {
@@ -131,9 +156,9 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    await this.prisma.collection.delete({
-      where: { id: collectionId },
-    });
+    await this.database
+      .delete(collections)
+      .where(eq(collections.id, collectionId));
 
     return { message: "Collection deleted successfully" };
   }
@@ -149,12 +174,12 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    const targetUser = await this.prisma.user.findUnique({
-      where: { email: data.email },
+    const targetUser = await this.database.query.users.findFirst({
+      where: eq(users.email, data.email),
     });
 
     if (!targetUser) {
-      throw new BadRequestException("User not found");
+      throw new BadRequestException("No account found for that email address");
     }
 
     if (targetUser.id === userId) {
@@ -169,19 +194,24 @@ export class CollectionsService {
       throw new BadRequestException("User is already a collaborator");
     }
 
-    const collaborator = await this.prisma.collectionCollaborator.create({
-      data: {
+    const [collaborator] = await this.database
+      .insert(collectionCollaborators)
+      .values({
         collectionId,
         userId: targetUser.id,
         role: data.role,
-      },
-      include: {
-        user: true,
-      },
-    });
+      })
+      .returning();
+
+    if (!collaborator) {
+      throw new BadRequestException("Unable to add collaborator");
+    }
 
     return {
-      collaborator: serializeCollaborator(collaborator),
+      collaborator: serializeCollaborator({
+        ...collaborator,
+        user: targetUser,
+      }),
     };
   }
 
@@ -208,9 +238,9 @@ export class CollectionsService {
       throw new BadRequestException("Cannot remove owner");
     }
 
-    await this.prisma.collectionCollaborator.delete({
-      where: { id: collaboratorId },
-    });
+    await this.database
+      .delete(collectionCollaborators)
+      .where(eq(collectionCollaborators.id, collaboratorId));
 
     return {
       message: "Collaborator removed successfully",
@@ -219,13 +249,13 @@ export class CollectionsService {
 
   async listFlashcards(collectionId: string, userId: string) {
     const access = await this.getCollectionAccess(collectionId, userId);
-    const flashcards = await this.prisma.flashcard.findMany({
-      where: { collectionId },
-      orderBy: { createdAt: "asc" },
+    const flashcardsList = await this.database.query.flashcards.findMany({
+      where: eq(flashcards.collectionId, collectionId),
+      orderBy: (table, { asc }) => [asc(table.createdAt)],
     });
 
     return {
-      flashcards: flashcards.map(serializeFlashcard),
+      flashcards: flashcardsList.map(serializeFlashcard),
       role: access.role,
     };
   }
@@ -236,11 +266,11 @@ export class CollectionsService {
     userId: string,
   ) {
     const access = await this.getCollectionAccess(collectionId, userId);
-    const flashcard = await this.prisma.flashcard.findFirst({
-      where: {
-        id: flashcardId,
-        collectionId,
-      },
+    const flashcard = await this.database.query.flashcards.findFirst({
+      where: and(
+        eq(flashcards.id, flashcardId),
+        eq(flashcards.collectionId, collectionId),
+      ),
     });
 
     if (!flashcard) {
@@ -264,15 +294,20 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    const flashcard = await this.prisma.flashcard.create({
-      data: {
+    const [flashcard] = await this.database
+      .insert(flashcards)
+      .values({
         question: data.question,
         answer: data.answer,
         type: data.type ?? "simple",
         collectionId,
         createdBy: userId,
-      },
-    });
+      })
+      .returning();
+
+    if (!flashcard) {
+      throw new BadRequestException("Unable to create flashcard");
+    }
 
     return {
       flashcard: serializeFlashcard(flashcard),
@@ -291,25 +326,31 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    const flashcard = await this.prisma.flashcard.findFirst({
-      where: {
-        id: flashcardId,
-        collectionId,
-      },
+    const flashcard = await this.database.query.flashcards.findFirst({
+      where: and(
+        eq(flashcards.id, flashcardId),
+        eq(flashcards.collectionId, collectionId),
+      ),
     });
 
     if (!flashcard) {
       throw new NotFoundException("Flashcard not found");
     }
 
-    const updated = await this.prisma.flashcard.update({
-      where: { id: flashcardId },
-      data: {
+    const [updated] = await this.database
+      .update(flashcards)
+      .set({
         question: data.question ?? flashcard.question,
         answer: data.answer ?? flashcard.answer,
         type: data.type ?? flashcard.type,
-      },
-    });
+        updatedAt: new Date(),
+      })
+      .where(eq(flashcards.id, flashcardId))
+      .returning();
+
+    if (!updated) {
+      throw new NotFoundException("Flashcard not found");
+    }
 
     return {
       flashcard: serializeFlashcard(updated),
@@ -327,20 +368,20 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    const flashcard = await this.prisma.flashcard.findFirst({
-      where: {
-        id: flashcardId,
-        collectionId,
-      },
+    const flashcard = await this.database.query.flashcards.findFirst({
+      where: and(
+        eq(flashcards.id, flashcardId),
+        eq(flashcards.collectionId, collectionId),
+      ),
     });
 
     if (!flashcard) {
       throw new NotFoundException("Flashcard not found");
     }
 
-    await this.prisma.flashcard.delete({
-      where: { id: flashcardId },
-    });
+    await this.database
+      .delete(flashcards)
+      .where(eq(flashcards.id, flashcardId));
 
     return {
       message: "Flashcard deleted successfully",
@@ -350,19 +391,24 @@ export class CollectionsService {
   async startSession(collectionId: string, userId: string) {
     await this.getCollectionAccess(collectionId, userId);
 
-    const flashcards = await this.prisma.flashcard.findMany({
-      where: { collectionId },
-      orderBy: { createdAt: "asc" },
+    const flashcardsList = await this.database.query.flashcards.findMany({
+      where: eq(flashcards.collectionId, collectionId),
+      orderBy: (table, { asc }) => [asc(table.createdAt)],
+      columns: { id: true },
     });
 
-    if (flashcards.length > 0) {
-      await this.prisma.flashcardReview.createMany({
-        data: flashcards.map((flashcard) => ({
-          flashcardId: flashcard.id,
-          userId,
-        })),
-        skipDuplicates: true,
-      });
+    if (flashcardsList.length > 0) {
+      await this.database
+        .insert(flashcardReviews)
+        .values(
+          flashcardsList.map((flashcard) => ({
+            flashcardId: flashcard.id,
+            userId,
+          })),
+        )
+        .onConflictDoNothing({
+          target: [flashcardReviews.userId, flashcardReviews.flashcardId],
+        });
     }
 
     return {
@@ -407,11 +453,11 @@ export class CollectionsService {
   async clearProgress(collectionId: string, userId: string) {
     await this.getCollectionAccess(collectionId, userId);
 
-    const flashcards = await this.prisma.flashcard.findMany({
-      where: { collectionId },
-      select: { id: true },
+    const flashcardsList = await this.database.query.flashcards.findMany({
+      where: eq(flashcards.collectionId, collectionId),
+      columns: { id: true },
     });
-    const flashcardIds = flashcards.map((flashcard) => flashcard.id);
+    const flashcardIds = flashcardsList.map((flashcard) => flashcard.id);
 
     if (flashcardIds.length === 0) {
       return {
@@ -420,17 +466,18 @@ export class CollectionsService {
       };
     }
 
-    const deleted = await this.prisma.flashcardReview.deleteMany({
-      where: {
-        userId,
-        flashcardId: {
-          in: flashcardIds,
-        },
-      },
-    });
+    const deleted = await this.database
+      .delete(flashcardReviews)
+      .where(
+        and(
+          eq(flashcardReviews.userId, userId),
+          inArray(flashcardReviews.flashcardId, flashcardIds),
+        ),
+      )
+      .returning({ id: flashcardReviews.id });
 
     return {
-      deleted: deleted.count,
+      deleted: deleted.length,
       message: "Learning progress cleared successfully",
     };
   }
@@ -440,8 +487,8 @@ export class CollectionsService {
     userId: string,
     rating: ReviewRating,
   ) {
-    const flashcard = await this.prisma.flashcard.findUnique({
-      where: { id: flashcardId },
+    const flashcard = await this.database.query.flashcards.findFirst({
+      where: eq(flashcards.id, flashcardId),
     });
 
     if (!flashcard) {
@@ -450,30 +497,44 @@ export class CollectionsService {
 
     await this.getCollectionAccess(flashcard.collectionId, userId);
 
-    let review = await this.prisma.flashcardReview.findUnique({
-      where: {
-        userId_flashcardId: {
-          userId,
-          flashcardId,
-        },
-      },
+    let review = await this.database.query.flashcardReviews.findFirst({
+      where: and(
+        eq(flashcardReviews.userId, userId),
+        eq(flashcardReviews.flashcardId, flashcardId),
+      ),
     });
 
     if (!review) {
-      review = await this.prisma.flashcardReview.create({
-        data: {
+      const [created] = await this.database
+        .insert(flashcardReviews)
+        .values({
           flashcardId,
           userId,
-        },
-      });
+        })
+        .returning();
+
+      if (!created) {
+        throw new BadRequestException("Unable to create review progress");
+      }
+
+      review = created;
     }
 
-    const next = this.calculateNextReview(review, rating);
-    const updated = await this.prisma.flashcardReview.update({
-      where: { id: review.id },
-      data: next,
-      include: { flashcard: true },
+    const next = calculateNextReview(review, rating);
+
+    await this.database
+      .update(flashcardReviews)
+      .set(next)
+      .where(eq(flashcardReviews.id, review.id));
+
+    const updated = await this.database.query.flashcardReviews.findFirst({
+      where: eq(flashcardReviews.id, review.id),
+      with: { flashcard: true },
     });
+
+    if (!updated) {
+      throw new NotFoundException("Review not found");
+    }
 
     return {
       review: serializeReviewProgress(updated),
@@ -484,12 +545,12 @@ export class CollectionsService {
     collectionId: string,
     userId: string,
   ): Promise<{ collection: CollectionAccessRecord; role: CollectionRole }> {
-    const collection = await this.prisma.collection.findUnique({
-      where: { id: collectionId },
-      include: {
+    const collection = await this.database.query.collections.findFirst({
+      where: eq(collections.id, collectionId),
+      with: {
         collaborators: {
-          include: { user: true },
-          orderBy: { createdAt: "asc" },
+          with: { user: true },
+          orderBy: (table, { asc }) => [asc(table.createdAt)],
         },
       },
     });
@@ -520,18 +581,25 @@ export class CollectionsService {
     collectionId: string,
     userId: string,
   ) {
-    return this.prisma.flashcardReview.findMany({
-      where: {
-        userId,
-        flashcard: {
-          collectionId,
-        },
-      },
-      include: {
-        flashcard: true,
-      },
-      orderBy: { dueAt: "asc" },
-    });
+    const rows = await this.database
+      .select({
+        review: flashcardReviews,
+        flashcard: flashcards,
+      })
+      .from(flashcardReviews)
+      .innerJoin(flashcards, eq(flashcardReviews.flashcardId, flashcards.id))
+      .where(
+        and(
+          eq(flashcardReviews.userId, userId),
+          eq(flashcards.collectionId, collectionId),
+        ),
+      )
+      .orderBy(asc(flashcardReviews.dueAt));
+
+    return rows.map((row) => ({
+      ...row.review,
+      flashcard: row.flashcard,
+    }));
   }
 
   private canEditCollection(role: CollectionRole) {
@@ -540,12 +608,5 @@ export class CollectionsService {
 
   private canManageCollaborators(role: CollectionRole) {
     return role === "owner" || role === "admin";
-  }
-
-  private calculateNextReview(
-    review: Prisma.FlashcardReviewGetPayload<object>,
-    rating: ReviewRating,
-  ) {
-    return calculateNextReview(review, rating);
   }
 }

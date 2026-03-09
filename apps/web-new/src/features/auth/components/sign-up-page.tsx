@@ -6,12 +6,15 @@ import { signUpBodySchema, type SignUpBody } from "@advanced-quiz/contracts";
 import { Button } from "@/components/ui/button";
 import { signUp } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
-import {
-  errorClass,
-  errorPanelClass,
-  inputClass,
-  labelClass,
-} from "./auth-form-styles";
+import { PasswordRequirements } from "./password-requirements";
+
+const inputClass =
+  "w-full border border-border bg-background px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:bg-background";
+const labelClass =
+  "block text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground";
+const errorClass = "text-sm font-medium text-destructive";
+const errorPanelClass =
+  "border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive";
 
 export function SignUpPage() {
   const navigate = useNavigate();
@@ -21,6 +24,7 @@ export function SignUpPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<SignUpBody>({
     resolver: zodResolver(signUpBodySchema),
@@ -108,10 +112,7 @@ export function SignUpPage() {
           {errors.password && (
             <p className={errorClass}>{errors.password.message}</p>
           )}
-          <p className="text-xs font-medium leading-5 text-gray-500">
-            Use at least 12 characters with upper and lowercase letters, a
-            number, and a symbol.
-          </p>
+          <PasswordRequirements password={watch("password")} />
         </div>
 
         <div className="space-y-2">
@@ -136,11 +137,11 @@ export function SignUpPage() {
             type="submit"
             disabled={loading}
             size="lg"
-            className="h-12 w-full bg-[#D9FF00] text-base font-bold text-black hover:bg-[#c2e600]"
+            className="h-12 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
           >
             {loading ? "Creating account…" : "Create account"}
           </Button>
-          <p className="text-center text-sm font-medium text-gray-500">
+          <p className="text-center text-sm font-medium text-muted-foreground">
             By continuing, you agree to our Terms &amp; Privacy Policy.
           </p>
         </div>

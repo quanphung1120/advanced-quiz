@@ -64,7 +64,8 @@ api.interceptors.response.use(
     const shouldRefresh =
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      originalRequest.url !== "/api/auth/refresh";
+      originalRequest.url !== "/api/auth/refresh" &&
+      originalRequest.url !== "/api/auth/login";
 
     if (!shouldRefresh) {
       return Promise.reject(error);

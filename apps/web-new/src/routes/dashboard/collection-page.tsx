@@ -10,6 +10,7 @@ import {
   Plus,
 } from "lucide-react";
 import { CollectionFormModal } from "@/features/collections/components/collection-form-modal";
+import { CollaboratorsPanel } from "@/features/collections/components/collaborators-panel";
 import { DeleteDeckDialog } from "@/features/collections/components/delete-deck-dialog";
 import {
   useCollection,
@@ -56,6 +57,7 @@ export function CollectionPage() {
   const flashcards = flashcardsQuery.data?.flashcards ?? [];
   const cardCount = flashcards.length;
   const canEdit = role === "owner" || role === "editor" || role === "admin";
+  const canManage = role === "owner" || role === "admin";
 
   const readinessLabel = useMemo(() => {
     if (cardCount === 0) return "No cards";
@@ -244,8 +246,17 @@ export function CollectionPage() {
           />
         </TabsPanel>
 
-        {/* Settings tab — study, danger zone */}
-        <TabsPanel value="settings" className="space-y-6">
+        {/* Settings tab — collaborators, study, danger zone */}
+        <TabsPanel value="settings" className="space-y-8">
+          {/* Collaborators */}
+          <CollaboratorsPanel
+            canManage={canManage}
+            collectionId={collection.id}
+            collaborators={collection.collaborators ?? []}
+          />
+
+          <div className="h-px bg-border" />
+
           {/* Study */}
           <div className="space-y-3">
             <div>

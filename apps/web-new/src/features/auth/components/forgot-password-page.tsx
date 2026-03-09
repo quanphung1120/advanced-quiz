@@ -9,13 +9,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { forgotPassword } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
-import {
-  errorClass,
-  errorPanelClass,
-  inputClass,
-  labelClass,
-  successPanelClass,
-} from "./auth-form-styles";
+
+const inputClass =
+  "w-full border border-border bg-background px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:bg-background";
+const labelClass =
+  "block text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground";
+const errorClass = "text-sm font-medium text-destructive";
+const successPanelClass =
+  "border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-500 dark:text-emerald-400";
+const errorPanelClass =
+  "border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive";
 
 export function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null);
@@ -84,16 +87,16 @@ export function ForgotPasswordPage() {
           type="submit"
           disabled={loading}
           size="lg"
-          className="h-12 w-full bg-[#D9FF00] text-base font-bold text-black hover:bg-[#c2e600]"
+          className="h-12 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
         >
           {loading ? "Sending reset link…" : "Send reset link"}
         </Button>
 
-        <p className="text-center text-sm font-medium text-gray-500">
+        <p className="text-center text-sm font-medium text-muted-foreground">
           Need to verify a new account?{" "}
           <Link
             to="/verify-email"
-            className="font-semibold text-white transition-colors hover:text-[#D9FF00]"
+            className="font-semibold text-foreground transition-colors hover:text-primary"
           >
             Enter a verification code
           </Link>

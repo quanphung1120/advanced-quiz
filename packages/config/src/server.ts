@@ -19,3 +19,7 @@ export const serverEnvSchema = sharedEnvSchema.extend({
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
+
+export function getServerEnv(): ServerEnv {
+  return serverEnvSchema.parse(process.env);
+}

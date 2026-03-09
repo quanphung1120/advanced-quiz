@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Inject, Param, Post, UseGuards } from "@nestjs/common";
 import { submitReviewBodySchema } from "@advanced-quiz/contracts";
 import { ApiCookieAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { AuthGuard } from "../auth/auth.guard";
@@ -12,7 +12,10 @@ import { CollectionsService } from "../collections/collections.service";
 @UseGuards(AuthGuard)
 @Controller("api/v1/flashcards")
 export class FlashcardsController {
-  constructor(private readonly collectionsService: CollectionsService) {}
+  constructor(
+    @Inject(CollectionsService)
+    private readonly collectionsService: CollectionsService,
+  ) {}
 
   @Post(":id/review")
   @ApiOperation({ summary: "Submit an SRS rating for a flashcard" })

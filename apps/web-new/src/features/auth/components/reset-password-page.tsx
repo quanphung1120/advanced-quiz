@@ -9,13 +9,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { resetPassword } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
-import {
-  errorClass,
-  errorPanelClass,
-  inputClass,
-  labelClass,
-  successPanelClass,
-} from "./auth-form-styles";
+import { PasswordRequirements } from "./password-requirements";
+
+const inputClass =
+  "w-full border border-border bg-background px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:bg-background";
+const labelClass =
+  "block text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground";
+const errorClass = "text-sm font-medium text-destructive";
+const successPanelClass =
+  "border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-500 dark:text-emerald-400";
+const errorPanelClass =
+  "border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive";
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -32,6 +36,7 @@ export function ResetPasswordPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<ResetPasswordBody>({
     resolver: zodResolver(resetPasswordBodySchema),
@@ -107,6 +112,7 @@ export function ResetPasswordPage() {
           {errors.password && (
             <p className={errorClass}>{errors.password.message}</p>
           )}
+          <PasswordRequirements password={watch("password")} />
         </div>
 
         <div className="space-y-2">
@@ -126,33 +132,29 @@ export function ResetPasswordPage() {
           {errors.confirmPassword && (
             <p className={errorClass}>{errors.confirmPassword.message}</p>
           )}
-          <p className="text-xs font-medium leading-5 text-gray-500">
-            Use at least 12 characters with upper and lowercase letters, a
-            number, and a symbol.
-          </p>
         </div>
 
         <Button
           type="submit"
           disabled={loading || !token}
           size="lg"
-          className="h-12 w-full bg-[#D9FF00] text-base font-bold text-black hover:bg-[#c2e600]"
+          className="h-12 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
         >
           {loading ? "Updating password…" : "Update password"}
         </Button>
 
-        <p className="text-center text-sm font-medium text-gray-500">
+        <p className="text-center text-sm font-medium text-muted-foreground">
           Return to{" "}
           <Link
             to="/forgot-password"
-            className="font-semibold text-white transition-colors hover:text-[#D9FF00]"
+            className="font-semibold text-foreground transition-colors hover:text-primary"
           >
             password recovery
           </Link>{" "}
           or{" "}
           <Link
             to="/sign-in"
-            className="font-semibold text-white transition-colors hover:text-[#D9FF00]"
+            className="font-semibold text-foreground transition-colors hover:text-primary"
           >
             sign in
           </Link>

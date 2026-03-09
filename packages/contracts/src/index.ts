@@ -11,7 +11,9 @@ export const collectionRoleSchema = z.enum([
 ]);
 export type CollectionRole = z.infer<typeof collectionRoleSchema>;
 
-export const flashcardTypeSchema = z.string().min(1).default("simple");
+export const flashcardTypeSchema = z
+  .enum(["simple", "multiple_choice", "true_false"])
+  .default("simple");
 export type FlashcardType = z.infer<typeof flashcardTypeSchema>;
 
 export const reviewRatingSchema = z.number().int().min(0).max(3);
@@ -36,12 +38,10 @@ export type SessionUser = z.infer<typeof sessionUserSchema>;
 
 export const passwordSchema = z
   .string()
-  .min(12, "Password must be at least 12 characters")
-  .max(72, "Password must be 72 characters or fewer")
-  .regex(/[a-z]/, "Password must include a lowercase letter")
+  .min(8, "Password must be at least 8 characters")
+  .max(64, "Password must be 64 characters or fewer")
   .regex(/[A-Z]/, "Password must include an uppercase letter")
-  .regex(/[0-9]/, "Password must include a number")
-  .regex(/[^A-Za-z0-9]/, "Password must include a symbol");
+  .regex(/[^A-Za-z0-9]/, "Password must include a special character");
 export type Password = z.infer<typeof passwordSchema>;
 
 export const otpCodeSchema = z

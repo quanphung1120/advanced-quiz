@@ -13,13 +13,16 @@ import {
   verifyEmail,
 } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
-import {
-  errorClass,
-  errorPanelClass,
-  inputClass,
-  labelClass,
-  successPanelClass,
-} from "./auth-form-styles";
+
+const inputClass =
+  "w-full border border-border bg-background px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:bg-background";
+const labelClass =
+  "block text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground";
+const errorClass = "text-sm font-medium text-destructive";
+const successPanelClass =
+  "border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-500 dark:text-emerald-400";
+const errorPanelClass =
+  "border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive";
 
 export function VerifyEmailPage() {
   const navigate = useNavigate();
@@ -151,7 +154,7 @@ export function VerifyEmailPage() {
             className={inputClass}
           />
           {errors.otp && <p className={errorClass}>{errors.otp.message}</p>}
-          <p className="text-xs font-medium leading-5 text-gray-500">
+          <p className="text-xs font-medium leading-5 text-muted-foreground">
             The code expires quickly. If it has lapsed, request a new one.
           </p>
         </div>
@@ -161,7 +164,7 @@ export function VerifyEmailPage() {
             type="submit"
             disabled={loading}
             size="lg"
-            className="h-12 w-full bg-[#D9FF00] text-base font-bold text-black hover:bg-[#c2e600]"
+            className="h-12 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
           >
             {loading ? "Verifying…" : "Verify email"}
           </Button>
@@ -169,17 +172,17 @@ export function VerifyEmailPage() {
             type="button"
             onClick={handleResend}
             disabled={resending}
-            className="w-full text-center text-sm font-semibold text-gray-400 transition-colors hover:text-[#D9FF00] disabled:cursor-not-allowed disabled:text-gray-600"
+            className="w-full text-center text-sm font-semibold text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
             {resending ? "Sending a new code…" : "Resend verification code"}
           </button>
         </div>
 
-        <p className="text-center text-sm font-medium text-gray-500">
+        <p className="text-center text-sm font-medium text-muted-foreground">
           Need password recovery instead?{" "}
           <Link
             to="/forgot-password"
-            className="font-semibold text-white transition-colors hover:text-[#D9FF00]"
+            className="font-semibold text-foreground transition-colors hover:text-primary"
           >
             Reset it here
           </Link>

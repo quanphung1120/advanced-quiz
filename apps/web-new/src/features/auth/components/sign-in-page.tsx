@@ -7,13 +7,16 @@ import { signInBodySchema, type SignInBody } from "@advanced-quiz/contracts";
 import { Button } from "@/components/ui/button";
 import { resendVerification, signIn } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
-import {
-  errorClass,
-  errorPanelClass,
-  inputClass,
-  labelClass,
-  successPanelClass,
-} from "./auth-form-styles";
+
+const inputClass =
+  "w-full border border-border bg-background px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:bg-background";
+const labelClass =
+  "block text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground";
+const errorClass = "text-sm font-medium text-destructive";
+const successPanelClass =
+  "border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-500 dark:text-emerald-400";
+const errorPanelClass =
+  "border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive";
 
 export function SignInPage() {
   const navigate = useNavigate();
@@ -127,7 +130,7 @@ export function SignInPage() {
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Link
                   to={`/verify-email?email=${encodeURIComponent(emailValue ?? "")}`}
-                  className="text-sm font-semibold text-white transition-colors hover:text-[#D9FF00]"
+                  className="text-sm font-semibold text-foreground transition-colors hover:text-primary"
                 >
                   Enter verification code
                 </Link>
@@ -135,7 +138,7 @@ export function SignInPage() {
                   type="button"
                   onClick={handleResendVerification}
                   disabled={resendState.loading}
-                  className="text-sm font-semibold text-[#D9FF00] transition-colors hover:text-[#f0ff7a] disabled:cursor-not-allowed disabled:text-gray-500"
+                  className="text-sm font-semibold text-primary transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:text-muted-foreground"
                 >
                   {resendState.loading ? "Resending…" : "Resend code"}
                 </button>
@@ -174,7 +177,7 @@ export function SignInPage() {
             </label>
             <Link
               to="/forgot-password"
-              className="text-sm font-semibold text-gray-500 transition-colors hover:text-[#D9FF00]"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
             >
               Forgot?
             </Link>
@@ -196,7 +199,7 @@ export function SignInPage() {
           type="submit"
           disabled={loading}
           size="lg"
-          className="h-12 w-full bg-[#D9FF00] text-base font-bold text-black hover:bg-[#c2e600]"
+          className="h-12 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
         >
           {loading ? "Signing in…" : "Sign in"}
         </Button>

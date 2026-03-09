@@ -1,6 +1,6 @@
 # Advanced Quiz
 
-Local development targets the new Bun/Fastify API in `apps/api-new`, the Vite/React app in `apps/web-new`, and a shared Prisma workspace in `packages/db`.
+Local development targets the Fastify API in `apps/api-new`, the Vite/React app in `apps/web-new`, and a shared Drizzle workspace in `packages/db`.
 
 ## Local Dev
 
@@ -10,16 +10,27 @@ Local development targets the new Bun/Fastify API in `apps/api-new`, the Vite/Re
 cp .env.example .env
 ```
 
-2. Install dependencies:
+2. Set `DATABASE_URL` in `.env` to your PostgreSQL connection string (external/local managed by you).
+
+3. Install dependencies:
 
 ```sh
-bun install
+pnpm install
 ```
 
-3. Start the new apps:
+4. Start the development environment:
 
 ```sh
-bun run dev
+pnpm run dev
+```
+
+`pnpm run dev` and `pnpm run dev:api` automatically run `db:push` for the shared database package before the API dev server starts, so your local schema is applied to the configured development database on each startup.
+
+If you change the Drizzle schema and want to record a migration file in the repo, run:
+
+```sh
+pnpm run db:generate
+pnpm run db:migrate
 ```
 
 This runs:
@@ -27,43 +38,28 @@ This runs:
 - `@advanced-quiz/api` on `http://localhost:3001`
 - `@advanced-quiz/web` on `http://localhost:5173`
 
-Prisma is managed from the shared database workspace:
+Database scripts are managed in `packages/db` via Drizzle:
 
 ```sh
-bun run db:generate
-bun run db:migrate
+pnpm run db:generate
+pnpm run db:migrate
+pnpm run db:push
+pnpm run db:studio
 ```
 
-## Docker Compose
+## Docker Compose (Production)
 
-The repo includes a local development stack in `compose.yaml`.
+This repository no longer ships a local development `compose.yaml` with PostgreSQL.
 
-Start Postgres, the new API, and the new web app:
+`compose.prod.yaml` builds API/Web images and expects an external PostgreSQL via `DATABASE_URL`.
 
 ```sh
-docker compose up
+export DATABASE_URL='postgresql://user:password@db-host:5432/advanced_quiz'
+docker compose -f compose.prod.yaml up --build
 ```
 
-Services:
-
-- Postgres: `localhost:5432`
-- API: `http://localhost:3001`
-- Web: `http://localhost:5173`
-
-Stop the stack:
+Stop:
 
 ```sh
-docker compose down
-```
-
-Remove database and dependency volumes too:
-
-```sh
-docker compose down -v
-```
-
-If you need to sync the schema into a fresh local database:
-
-```sh
-docker compose exec api bun run db:push
+docker compose -f compose.prod.yaml down
 ```

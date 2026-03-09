@@ -1,18 +1,23 @@
 import {
   Body,
   Controller,
-  Get,
   HttpCode,
   HttpStatus,
   Inject,
   Post,
-  Request,
+  Req,
   Res,
   UseGuards,
   UsePipes,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBody,
+  ApiCookieAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import {
   forgotPasswordBodySchema,
@@ -31,6 +36,8 @@ import {
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { AuthGuard } from "./auth.guard";
 import { AuthService } from "./auth.service";
+import { CurrentUser } from "./current-user.decorator";
+import type { AuthenticatedUser } from "../common/authenticated-request";
 
 const ACCESS_COOKIE_MAX_AGE_SECONDS = 15 * 60;
 const REFRESH_COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
@@ -38,44 +45,44 @@ const REFRESH_COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 @ApiTags("auth")
 @Controller("api/auth")
 export class AuthController {
+  private readonly isSecure: boolean;
+
   constructor(
-    @Inject(AuthService) private readonly authService: AuthService,
-    private readonly configService: ConfigService,
-  ) {}
+    @Inject(AuthService)
+    private readonly authService: AuthService,
+    @Inject(ConfigService)
+    private configService: ConfigService,
+  ) {
+    this.isSecure =
+      this.configService.getOrThrow<string>("NODE_ENV") === "production";
+  }
+
+  private get baseCookieOptions() {
+    return {
+      path: "/",
+      httpOnly: true,
+      secure: this.isSecure,
+      sameSite: "lax" as const,
+    };
+  }
 
   private setAuthCookies(
     reply: FastifyReply,
     tokens: { accessToken: string; refreshToken: string },
   ) {
     reply.setCookie("access_token", tokens.accessToken, {
-      path: "/",
-      httpOnly: true,
-      secure: this.configService.get("NODE_ENV") === "production",
-      sameSite: "lax",
+      ...this.baseCookieOptions,
       maxAge: ACCESS_COOKIE_MAX_AGE_SECONDS,
     });
     reply.setCookie("refresh_token", tokens.refreshToken, {
-      path: "/",
-      httpOnly: true,
-      secure: this.configService.get("NODE_ENV") === "production",
-      sameSite: "lax",
+      ...this.baseCookieOptions,
       maxAge: REFRESH_COOKIE_MAX_AGE_SECONDS,
     });
   }
 
   private clearAuthCookies(reply: FastifyReply) {
-    reply.clearCookie("access_token", {
-      path: "/",
-      httpOnly: true,
-      secure: this.configService.get("NODE_ENV") === "production",
-      sameSite: "lax",
-    });
-    reply.clearCookie("refresh_token", {
-      path: "/",
-      httpOnly: true,
-      secure: this.configService.get("NODE_ENV") === "production",
-      sameSite: "lax",
-    });
+    reply.clearCookie("access_token", this.baseCookieOptions);
+    reply.clearCookie("refresh_token", this.baseCookieOptions);
   }
 
   @Post("login")
@@ -100,11 +107,11 @@ export class AuthController {
   }
 
   @Post("register")
+  @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(signUpBodySchema))
   @ApiOperation({ summary: "Register a user and send a verification code" })
-  async register(@Body() body: SignUpBody, @Res() reply: FastifyReply) {
-    const result = await this.authService.register(body);
-    return reply.code(HttpStatus.CREATED).send(result);
+  async register(@Body() body: SignUpBody) {
+    return this.authService.register(body);
   }
 
   @Post("verify-email")
@@ -121,22 +128,16 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(resendVerificationBodySchema))
   @ApiOperation({ summary: "Resend verification OTP" })
-  async resendVerification(
-    @Body() body: ResendVerificationBody,
-    @Res() reply: FastifyReply,
-  ) {
-    return reply.send(await this.authService.resendVerification(body));
+  async resendVerification(@Body() body: ResendVerificationBody) {
+    return this.authService.resendVerification(body);
   }
 
   @Post("forgot-password")
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(forgotPasswordBodySchema))
   @ApiOperation({ summary: "Request a password reset email" })
-  async forgotPassword(
-    @Body() body: ForgotPasswordBody,
-    @Res() reply: FastifyReply,
-  ) {
-    return reply.send(await this.authService.forgotPassword(body));
+  async forgotPassword(@Body() body: ForgotPasswordBody) {
+    return this.authService.forgotPassword(body);
   }
 
   @Post("reset-password")
@@ -151,49 +152,41 @@ export class AuthController {
     return reply.send(await this.authService.resetPassword(body));
   }
 
-  @Get("me")
-  @UseGuards(AuthGuard)
-  @ApiOperation({ summary: "Get current user" })
-  @ApiResponse({ status: 200, description: "Returns the current user" })
-  @ApiResponse({ status: 401, description: "Unauthorized" })
-  async getMe(@Request() req: { user: unknown }) {
-    return { user: req.user };
-  }
-
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: "Rotate refresh token and issue a new access token",
-  })
-  async refresh(@Request() req: FastifyRequest, @Res() reply: FastifyReply) {
-    const refreshToken = (
-      req as FastifyRequest & { cookies?: Record<string, string> }
-    ).cookies?.refresh_token;
-
+  @ApiOperation({ summary: "Refresh access token" })
+  @ApiResponse({ status: 200, description: "Token refreshed successfully" })
+  async refresh(@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
+    const cookies = req.cookies as Record<string, string> | undefined;
+    const refreshToken = cookies?.["refresh_token"];
     if (!refreshToken) {
       this.clearAuthCookies(reply);
-      return reply.code(HttpStatus.UNAUTHORIZED).send({
-        statusCode: HttpStatus.UNAUTHORIZED,
-        error: "Unauthorized",
-        message: "Refresh token missing",
-      });
+      return reply
+        .code(HttpStatus.UNAUTHORIZED)
+        .send({ message: "No refresh token provided" });
     }
 
-    const result = await this.authService.refreshSession(refreshToken);
-    this.setAuthCookies(reply, result);
-    return reply.send({ success: true });
+    try {
+      const result = await this.authService.refreshSession(refreshToken);
+      this.setAuthCookies(reply, result);
+      return reply.send({ user: result.user });
+    } catch (error) {
+      this.clearAuthCookies(reply);
+      throw error;
+    }
   }
 
   @Post("logout")
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
+  @ApiCookieAuth()
   @ApiOperation({ summary: "User logout" })
   @ApiResponse({ status: 200, description: "Logout successful" })
   async logout(
-    @Request() req: { user: { id: string } },
+    @CurrentUser() user: AuthenticatedUser,
     @Res() reply: FastifyReply,
   ) {
-    await this.authService.logout(req.user.id);
+    await this.authService.logout(user.id);
     this.clearAuthCookies(reply);
     return reply.send({ message: "Logged out successfully" });
   }

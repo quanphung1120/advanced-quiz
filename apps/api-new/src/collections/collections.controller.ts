@@ -3,6 +3,9 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
   Param,
   Post,
   Put,
@@ -28,7 +31,10 @@ import { CollectionsService } from "./collections.service";
 @UseGuards(AuthGuard)
 @Controller("api/v1/collections")
 export class CollectionsController {
-  constructor(private readonly collectionsService: CollectionsService) {}
+  constructor(
+    @Inject(CollectionsService)
+    private readonly collectionsService: CollectionsService,
+  ) {}
 
   @Get("me")
   @ApiOperation({ summary: "List current user's owned and shared collections" })
@@ -37,6 +43,7 @@ export class CollectionsController {
   }
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Create a collection" })
   createCollection(
     @CurrentUser() user: AuthenticatedUser,
@@ -81,6 +88,7 @@ export class CollectionsController {
   }
 
   @Post(":id/collaborators")
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Add collaborator" })
   addCollaborator(
     @Param("id") id: string,
@@ -129,6 +137,7 @@ export class CollectionsController {
   }
 
   @Post(":id/flashcards")
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Create a flashcard in a collection" })
   createFlashcard(
     @Param("id") id: string,
@@ -169,6 +178,7 @@ export class CollectionsController {
   }
 
   @Post(":id/start-session")
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Start an SRS session for a collection" })
   startSession(
     @Param("id") id: string,
@@ -184,11 +194,12 @@ export class CollectionsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query("limit") limit?: string,
   ) {
-    return this.collectionsService.getDueReviews(
-      id,
-      user.id,
-      limit ? Number.parseInt(limit, 10) : undefined,
-    );
+    let parsedLimit: number | undefined;
+    if (limit !== undefined) {
+      const n = Number.parseInt(limit, 10);
+      parsedLimit = Number.isNaN(n) || n < 1 ? 50 : Math.min(n, 200);
+    }
+    return this.collectionsService.getDueReviews(id, user.id, parsedLimit);
   }
 
   @Get(":id/stats")

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 type SendEmailArgs = {
@@ -12,8 +12,13 @@ type SendEmailArgs = {
 @Injectable()
 export class AuthMailerService {
   private readonly logger = new Logger(AuthMailerService.name);
+  private readonly resendApiKey: string;
+  private readonly resendFromEmail: string;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(@Inject(ConfigService) private configService: ConfigService) {
+    this.resendApiKey = this.configService.getOrThrow<string>("RESEND_API_KEY");
+    this.resendFromEmail = this.configService.getOrThrow<string>("RESEND_FROM_EMAIL");
+  }
 
   async sendVerificationOtp(args: {
     to: string;
@@ -94,21 +99,17 @@ export class AuthMailerService {
   }
 
   private async sendEmail(args: SendEmailArgs) {
-    const resendApiKey = this.configService.getOrThrow<string>("RESEND_API_KEY");
-    const resendFromEmail =
-      this.configService.getOrThrow<string>("RESEND_FROM_EMAIL");
-
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${resendApiKey}`,
+        Authorization: `Bearer ${this.resendApiKey}`,
         "Content-Type": "application/json",
         ...(args.idempotencyKey
           ? { "Idempotency-Key": args.idempotencyKey }
           : {}),
       },
       body: JSON.stringify({
-        from: resendFromEmail,
+        from: this.resendFromEmail,
         to: [args.to],
         subject: args.subject,
         html: args.html,

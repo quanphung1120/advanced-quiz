@@ -180,7 +180,7 @@ export function useSession() {
     queryKey: ["session"],
     queryFn: async () => {
       try {
-        const response = await api.get<SessionResponse>("/api/auth/me");
+        const response = await api.get<SessionResponse>("/api/v1/users/me");
         return response.data;
       } catch {
         return null;

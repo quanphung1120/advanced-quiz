@@ -12,19 +12,10 @@ import { AppModule } from "./app.module";
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
-  const bootstrapNodeEnv = process.env.NODE_ENV ?? "development";
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({
-      logger: {
-        level: process.env.LOG_LEVEL ?? "info",
-        transport:
-          bootstrapNodeEnv === "development"
-            ? { target: "pino-pretty", options: { colorize: true } }
-            : undefined,
-      },
-    }),
+    new FastifyAdapter(),
   );
   const configService = app.get(ConfigService);
   const nodeEnv = configService.getOrThrow<string>("NODE_ENV");
@@ -58,7 +49,7 @@ async function bootstrap() {
     const config = new DocumentBuilder()
       .setTitle("Advanced Quiz API")
       .setDescription(
-        "Flashcard and spaced-repetition API powered by NestJS, Fastify, and Prisma",
+        "Flashcard and spaced-repetition API powered by NestJS, Fastify, and Drizzle ORM",
       )
       .setVersion("0.1.0")
       .addServer(
@@ -82,11 +73,11 @@ async function bootstrap() {
 }
 
 bootstrap().catch((error: unknown) => {
+  const logger = new Logger("Bootstrap");
   if (error instanceof Error) {
-    console.error("Fatal error starting server:", error.message);
-    if (error.stack) console.error(error.stack);
+    logger.error(`Fatal error starting server: ${error.message}`, error.stack);
   } else {
-    console.error("Fatal error starting server:", error);
+    logger.error("Fatal error starting server", String(error));
   }
   process.exit(1);
 });
