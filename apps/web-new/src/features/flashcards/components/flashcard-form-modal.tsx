@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Textarea } from "@/components/ui/textarea";
 
 type FlashcardValues = {
   question: string;
@@ -51,41 +53,41 @@ export function FlashcardFormModal({
           });
         }}
       >
-        <div className="space-y-2">
-          <label
+        <Field>
+          <FieldLabel
             htmlFor="flashcard-question"
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1"
+            className="ml-1 text-[10px] tracking-[0.2em]"
           >
             Prompt / Question
-          </label>
-          <textarea
+          </FieldLabel>
+          <Textarea
             id="flashcard-question"
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="e.g. What is the Big O complexity of quicksort in the worst case?"
             required
             rows={3}
-            className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/60 focus:bg-primary/5 font-medium resize-none"
+            className="font-medium"
           />
-        </div>
+        </Field>
 
-        <div className="space-y-2">
-          <label
+        <Field>
+          <FieldLabel
             htmlFor="flashcard-answer"
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1"
+            className="ml-1 text-[10px] tracking-[0.2em]"
           >
             Resolution / Answer
-          </label>
-          <textarea
+          </FieldLabel>
+          <Textarea
             id="flashcard-answer"
             value={answer}
             onChange={(event) => setAnswer(event.target.value)}
             placeholder="e.g. O(n²) when the pivot is consistently the smallest or largest element."
             required
             rows={5}
-            className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/60 focus:bg-primary/5 font-medium resize-none"
+            className="font-medium"
           />
-        </div>
+        </Field>
 
         <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-border/60">
           <Button

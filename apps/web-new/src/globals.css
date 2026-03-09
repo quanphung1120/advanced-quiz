@@ -149,6 +149,7 @@
 :root,
 :root.light {
   --grid-line: rgba(0, 0, 0, 0.03);
+  --landing-grid-line: rgba(15, 23, 42, 0.06);
   --glow-primary-top: oklch(0.12 0 0 / 0.03);
   --glow-primary-bottom: oklch(0.12 0 0 / 0.02);
   --glow-accent-top: oklch(0.12 0 0 / 0.04);
@@ -156,15 +157,8 @@
 }
 
 :root.dark {
-  --grid-line: rgba(255, 255, 255, 0.015);
-  --glow-primary-top: oklch(0.88 0.28 111 / 0.08);
-  --glow-primary-bottom: oklch(0.88 0.28 111 / 0.04);
-  --glow-accent-top: oklch(0.52 0.26 258 / 0.12);
-  --glow-accent-bottom: oklch(0.52 0.26 258 / 0.06);
-}
-
-:root.dark {
   --grid-line: rgba(255, 255, 255, 0.012);
+  --landing-grid-line: rgba(255, 255, 255, 0.055);
   --glow-primary-top: oklch(0.88 0.28 111 / 0.08);
   --glow-primary-bottom: oklch(0.88 0.28 111 / 0.04);
   --glow-accent-top: oklch(0.52 0.26 258 / 0.12);
@@ -177,6 +171,14 @@
 
 .bg-grid-overlay-sm {
   background-image: none;
+}
+
+.landing-grid-surface {
+  background-image:
+    linear-gradient(to right, var(--landing-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--landing-grid-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: center center;
 }
 
 .glow-primary-top {

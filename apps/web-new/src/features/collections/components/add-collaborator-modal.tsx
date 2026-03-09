@@ -8,7 +8,10 @@ import {
   UserRound,
 } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input, InputAdornment, InputGroup } from "@/components/ui/input";
 import { useAddCollaborator, useSearchUsers } from "../hooks/use-collections";
 
 type AddCollaboratorModalProps = {
@@ -79,26 +82,28 @@ export function AddCollaboratorModal({
           onOpenChange(false);
         }}
       >
-        <div className="space-y-2">
-          <label
+        <Field>
+          <FieldLabel
             htmlFor="collaborator-email"
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1"
+            className="ml-1 text-[10px] tracking-[0.2em]"
           >
             Email Identity
-          </label>
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3.5 focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 transition-all">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <input
+          </FieldLabel>
+          <InputGroup>
+            <InputAdornment>
+              <Mail className="h-4 w-4" />
+            </InputAdornment>
+            <Input
               id="collaborator-email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               type="email"
               required
               placeholder="teammate@example.com"
-              className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground/50"
+              className="rounded-none border-0 bg-transparent px-0 py-0 font-medium focus:bg-transparent focus:ring-0"
             />
-          </div>
-        </div>
+          </InputGroup>
+        </Field>
 
         <div className="rounded-xl border border-border bg-muted/20 p-5 overflow-hidden">
           <div className="flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
@@ -136,11 +141,9 @@ export function AddCollaboratorModal({
         </div>
 
         <div className="space-y-4">
-          <label
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1"
-          >
+          <FieldLabel className="ml-1 text-[10px] tracking-[0.2em]">
             Operational Role
-          </label>
+          </FieldLabel>
           <div className="grid gap-3">
             {ROLE_OPTIONS.map((option) => {
               const Icon = option.icon;
@@ -184,11 +187,14 @@ export function AddCollaboratorModal({
         </div>
 
         {addCollaborator.error && (
-          <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3.5 text-xs font-semibold text-destructive animate-in fade-in slide-in-from-top-1">
+          <Alert
+            variant="destructive"
+            className="animate-in slide-in-from-top-1 fade-in text-xs font-semibold"
+          >
             {addCollaborator.error instanceof Error
               ? addCollaborator.error.message
               : "Failed to add collaborator. Verify access trace."}
-          </div>
+          </Alert>
         )}
 
         <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-border/60">
