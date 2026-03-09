@@ -1,25 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { startTransition, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import {
   resetPasswordBodySchema,
   type ResetPasswordBody,
 } from "@advanced-quiz/contracts";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { resetPassword } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
 import { PasswordRequirements } from "./password-requirements";
-
-const inputClass =
-  "w-full border border-border bg-background px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:bg-background";
-const labelClass =
-  "block text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground";
-const errorClass = "text-sm font-medium text-destructive";
-const successPanelClass =
-  "border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-500 dark:text-emerald-400";
-const errorPanelClass =
-  "border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive";
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -36,7 +29,7 @@ export function ResetPasswordPage() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<ResetPasswordBody>({
     resolver: zodResolver(resetPasswordBodySchema),
@@ -45,6 +38,11 @@ export function ResetPasswordPage() {
       password: "",
       confirmPassword: "",
     },
+  });
+  const passwordValue = useWatch({
+    control,
+    name: "password",
+    defaultValue: "",
   });
 
   async function onSubmit(data: ResetPasswordBody) {
@@ -88,38 +86,38 @@ export function ResetPasswordPage() {
         <input type="hidden" {...register("token")} value={token} />
 
         {!token && (
-          <div className={errorPanelClass}>
+          <Alert variant="destructive">
             This reset link is missing its token. Request a fresh recovery
             email.
-          </div>
+          </Alert>
         )}
 
-        {error && <div className={errorPanelClass}>{error}</div>}
-        {success && <div className={successPanelClass}>{success}</div>}
+        {error ? <Alert variant="destructive">{error}</Alert> : null}
+        {success ? <Alert variant="success">{success}</Alert> : null}
 
-        <div className="space-y-2">
-          <label htmlFor="password" className={labelClass}>
+        <Field>
+          <FieldLabel htmlFor="password">
             New password
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="password"
             type="password"
             autoComplete="new-password"
             placeholder="Create a strong password"
             {...register("password", { required: "Password is required" })}
-            className={inputClass}
+            className="rounded-none text-base focus:bg-background"
           />
-          {errors.password && (
-            <p className={errorClass}>{errors.password.message}</p>
-          )}
-          <PasswordRequirements password={watch("password")} />
-        </div>
+          {errors.password ? (
+            <FieldError>{errors.password.message}</FieldError>
+          ) : null}
+          <PasswordRequirements password={passwordValue} />
+        </Field>
 
-        <div className="space-y-2">
-          <label htmlFor="confirmPassword" className={labelClass}>
+        <Field>
+          <FieldLabel htmlFor="confirmPassword">
             Confirm password
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="confirmPassword"
             type="password"
             autoComplete="new-password"
@@ -127,12 +125,12 @@ export function ResetPasswordPage() {
             {...register("confirmPassword", {
               required: "Please confirm your password",
             })}
-            className={inputClass}
+            className="rounded-none text-base focus:bg-background"
           />
-          {errors.confirmPassword && (
-            <p className={errorClass}>{errors.confirmPassword.message}</p>
-          )}
-        </div>
+          {errors.confirmPassword ? (
+            <FieldError>{errors.confirmPassword.message}</FieldError>
+          ) : null}
+        </Field>
 
         <Button
           type="submit"

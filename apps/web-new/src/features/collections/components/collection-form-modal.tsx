@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type CollectionValues = {
   name: string;
@@ -51,39 +54,39 @@ export function CollectionFormModal({
           });
         }}
       >
-        <div className="space-y-2">
-          <label
+        <Field>
+          <FieldLabel
             htmlFor="collection-name"
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1"
+            className="ml-1 text-[10px] tracking-[0.2em]"
           >
             Collection Title
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="collection-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="e.g. Molecular Biology II"
             required
-            className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/60 focus:bg-primary/5 font-medium"
+            className="py-3 font-medium"
           />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <label
+        <Field className="space-y-1.5">
+          <FieldLabel
             htmlFor="collection-description"
-            className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1"
+            className="ml-1 text-[10px] tracking-[0.2em]"
           >
             Detailed Description
-          </label>
-          <textarea
+          </FieldLabel>
+          <Textarea
             id="collection-description"
             value={details}
             onChange={(event) => setDetails(event.target.value)}
             rows={4}
             placeholder="What knowledge gaps does this deck bridge?"
-            className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary/60 focus:bg-primary/5 font-medium resize-none"
+            className="font-medium"
           />
-        </div>
+        </Field>
 
         <div className="p-4 rounded-lg border border-border bg-muted/25 space-y-4">
           <div className="flex items-center justify-between gap-4">

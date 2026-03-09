@@ -7,22 +7,20 @@ import {
   verifyEmailBodySchema,
   type VerifyEmailBody,
 } from "@advanced-quiz/contracts";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   resendVerification,
   verifyEmail,
 } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
-
-const inputClass =
-  "w-full border border-border bg-background px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:bg-background";
-const labelClass =
-  "block text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground";
-const errorClass = "text-sm font-medium text-destructive";
-const successPanelClass =
-  "border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-500 dark:text-emerald-400";
-const errorPanelClass =
-  "border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive";
 
 export function VerifyEmailPage() {
   const navigate = useNavigate();
@@ -121,29 +119,29 @@ export function VerifyEmailPage() {
       footerActionTo="/sign-in"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {error && <div className={errorPanelClass}>{error}</div>}
-        {success && <div className={successPanelClass}>{success}</div>}
+        {error ? <Alert variant="destructive">{error}</Alert> : null}
+        {success ? <Alert variant="success">{success}</Alert> : null}
 
-        <div className="space-y-2">
-          <label htmlFor="email" className={labelClass}>
+        <Field>
+          <FieldLabel htmlFor="email">
             Email
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="email"
             type="email"
             autoComplete="email"
             placeholder="name@example.com"
             {...register("email", { required: "Email is required" })}
-            className={inputClass}
+            className="rounded-none text-base focus:bg-background"
           />
-          {errors.email && <p className={errorClass}>{errors.email.message}</p>}
-        </div>
+          {errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
+        </Field>
 
-        <div className="space-y-2">
-          <label htmlFor="otp" className={labelClass}>
+        <Field>
+          <FieldLabel htmlFor="otp">
             Verification code
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="otp"
             type="text"
             inputMode="numeric"
@@ -151,13 +149,13 @@ export function VerifyEmailPage() {
             maxLength={6}
             placeholder="123456"
             {...register("otp", { required: "Verification code is required" })}
-            className={inputClass}
+            className="rounded-none text-base focus:bg-background"
           />
-          {errors.otp && <p className={errorClass}>{errors.otp.message}</p>}
-          <p className="text-xs font-medium leading-5 text-muted-foreground">
+          {errors.otp ? <FieldError>{errors.otp.message}</FieldError> : null}
+          <FieldDescription>
             The code expires quickly. If it has lapsed, request a new one.
-          </p>
-        </div>
+          </FieldDescription>
+        </Field>
 
         <div className="space-y-3">
           <Button

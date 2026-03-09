@@ -4,19 +4,12 @@ import { startTransition, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
 import { signInBodySchema, type SignInBody } from "@advanced-quiz/contracts";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { resendVerification, signIn } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
-
-const inputClass =
-  "w-full border border-border bg-background px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:bg-background";
-const labelClass =
-  "block text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground";
-const errorClass = "text-sm font-medium text-destructive";
-const successPanelClass =
-  "border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-500 dark:text-emerald-400";
-const errorPanelClass =
-  "border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive";
 
 export function SignInPage() {
   const navigate = useNavigate();
@@ -124,7 +117,7 @@ export function SignInPage() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {error && (
-          <div className={errorPanelClass}>
+          <Alert variant="destructive">
             <p>{error}</p>
             {showVerificationActions && (
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -144,37 +137,37 @@ export function SignInPage() {
                 </button>
               </div>
             )}
-          </div>
+          </Alert>
         )}
 
         {resendState.message && (
-          <div className={successPanelClass}>{resendState.message}</div>
+          <Alert variant="success">{resendState.message}</Alert>
         )}
 
         {resendState.error && (
-          <div className={errorPanelClass}>{resendState.error}</div>
+          <Alert variant="destructive">{resendState.error}</Alert>
         )}
 
-        <div className="space-y-2">
-          <label htmlFor="email" className={labelClass}>
+        <Field>
+          <FieldLabel htmlFor="email">
             Email
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="email"
             type="email"
             autoComplete="email"
             placeholder="name@example.com"
             {...register("email")}
-            className={inputClass}
+            className="rounded-none text-base focus:bg-background"
           />
-          {errors.email && <p className={errorClass}>{errors.email.message}</p>}
-        </div>
+          {errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
+        </Field>
 
-        <div className="space-y-2">
+        <Field>
           <div className="flex items-center justify-between">
-            <label htmlFor="password" className={labelClass}>
+            <FieldLabel htmlFor="password">
               Password
-            </label>
+            </FieldLabel>
             <Link
               to="/forgot-password"
               className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
@@ -182,18 +175,18 @@ export function SignInPage() {
               Forgot?
             </Link>
           </div>
-          <input
+          <Input
             id="password"
             type="password"
             autoComplete="current-password"
             placeholder="••••••••"
             {...register("password")}
-            className={inputClass}
+            className="rounded-none text-base focus:bg-background"
           />
-          {errors.password && (
-            <p className={errorClass}>{errors.password.message}</p>
-          )}
-        </div>
+          {errors.password ? (
+            <FieldError>{errors.password.message}</FieldError>
+          ) : null}
+        </Field>
 
         <Button
           type="submit"

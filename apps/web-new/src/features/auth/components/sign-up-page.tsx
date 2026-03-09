@@ -1,20 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { startTransition, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { signUpBodySchema, type SignUpBody } from "@advanced-quiz/contracts";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { signUp } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
 import { PasswordRequirements } from "./password-requirements";
-
-const inputClass =
-  "w-full border border-border bg-background px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:bg-background";
-const labelClass =
-  "block text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground";
-const errorClass = "text-sm font-medium text-destructive";
-const errorPanelClass =
-  "border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive";
 
 export function SignUpPage() {
   const navigate = useNavigate();
@@ -24,11 +19,16 @@ export function SignUpPage() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<SignUpBody>({
     resolver: zodResolver(signUpBodySchema),
     defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+  });
+  const passwordValue = useWatch({
+    control,
+    name: "password",
+    defaultValue: "",
   });
 
   async function onSubmit(data: SignUpBody) {
@@ -65,72 +65,72 @@ export function SignUpPage() {
       footerActionTo="/sign-in"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {error && <div className={errorPanelClass}>{error}</div>}
+        {error ? <Alert variant="destructive">{error}</Alert> : null}
 
-        <div className="space-y-2">
-          <label htmlFor="name" className={labelClass}>
+        <Field>
+          <FieldLabel htmlFor="name">
             Full name
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="name"
             type="text"
             autoComplete="name"
             placeholder="Alex Carter"
             {...register("name")}
-            className={inputClass}
+            className="rounded-none text-base focus:bg-background"
           />
-          {errors.name && <p className={errorClass}>{errors.name.message}</p>}
-        </div>
+          {errors.name ? <FieldError>{errors.name.message}</FieldError> : null}
+        </Field>
 
-        <div className="space-y-2">
-          <label htmlFor="email" className={labelClass}>
+        <Field>
+          <FieldLabel htmlFor="email">
             Email
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="email"
             type="email"
             autoComplete="email"
             placeholder="name@example.com"
             {...register("email")}
-            className={inputClass}
+            className="rounded-none text-base focus:bg-background"
           />
-          {errors.email && <p className={errorClass}>{errors.email.message}</p>}
-        </div>
+          {errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
+        </Field>
 
-        <div className="space-y-2">
-          <label htmlFor="password" className={labelClass}>
+        <Field>
+          <FieldLabel htmlFor="password">
             Password
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="password"
             type="password"
             autoComplete="new-password"
             placeholder="Create a strong password"
             {...register("password")}
-            className={inputClass}
+            className="rounded-none text-base focus:bg-background"
           />
-          {errors.password && (
-            <p className={errorClass}>{errors.password.message}</p>
-          )}
-          <PasswordRequirements password={watch("password")} />
-        </div>
+          {errors.password ? (
+            <FieldError>{errors.password.message}</FieldError>
+          ) : null}
+          <PasswordRequirements password={passwordValue} />
+        </Field>
 
-        <div className="space-y-2">
-          <label htmlFor="confirmPassword" className={labelClass}>
+        <Field>
+          <FieldLabel htmlFor="confirmPassword">
             Confirm Password
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="confirmPassword"
             type="password"
             autoComplete="new-password"
             placeholder="Re-enter password"
             {...register("confirmPassword")}
-            className={inputClass}
+            className="rounded-none text-base focus:bg-background"
           />
-          {errors.confirmPassword && (
-            <p className={errorClass}>{errors.confirmPassword.message}</p>
-          )}
-        </div>
+          {errors.confirmPassword ? (
+            <FieldError>{errors.confirmPassword.message}</FieldError>
+          ) : null}
+        </Field>
 
         <div className="space-y-4 pt-1">
           <Button
