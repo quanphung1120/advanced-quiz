@@ -18,6 +18,8 @@ After this change, the API and web containers will build faster from the same mo
 - [x] (2026-03-25 13:33Z) Ran `pnpm run check-types` successfully.
 - [x] (2026-03-25 13:34Z) Ran `pnpm run lint` successfully.
 - [x] (2026-03-25 13:34Z) Attempted container-build validation and recorded that no supported container CLI is available in this WSL environment.
+- [x] (2026-03-25 13:35Z) Fixed the API Docker builder stage to provide a placeholder `DATABASE_URL` for Prisma client generation during image builds.
+- [x] (2026-03-25 13:35Z) Verified the failing path locally with `DATABASE_URL=... pnpm --filter @advanced-quiz/db build`.
 
 ## Surprises & Discoveries
 
@@ -29,6 +31,9 @@ After this change, the API and web containers will build faster from the same mo
 
 - Observation: The current environment cannot execute Docker or an alternative container build tool, so image validation must happen on a machine with Docker, Podman, Buildah, or Nerdctl installed.
   Evidence: `docker version` returned "The command 'docker' could not be found in this WSL 2 distro", and `command -v podman || command -v buildah || command -v nerdctl` returned no result.
+
+- Observation: Prisma config validation now happens during `prisma generate`, so the Docker build needs some `DATABASE_URL` value even though the build step does not connect to a real database.
+  Evidence: Dokploy failed during `@advanced-quiz/db:build` with `PrismaConfigEnvError: Cannot resolve environment variable: DATABASE_URL`, while `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public pnpm --filter @advanced-quiz/db build` succeeded locally.
 
 ## Decision Log
 
@@ -48,13 +53,17 @@ After this change, the API and web containers will build faster from the same mo
   Rationale: The main repeated cost in both images is dependency installation. BuildKit cache mounts improve rebuild speed without making the Dockerfiles materially harder to read.
   Date/Author: 2026-03-25 / Codex
 
+- Decision: Inject a placeholder `DATABASE_URL` only in the API builder stage through `PRISMA_BUILD_DATABASE_URL`.
+  Rationale: Prisma client generation requires the variable to exist during build, but the build should not depend on a live deployment database or bake runtime secrets into the final image.
+  Date/Author: 2026-03-25 / Codex
+
 ## Outcomes & Retrospective
 
 The API and web Dockerfiles now use the same high-level structure: a shared toolchain base, a Turborepo prune stage, a builder stage that installs dependencies from pruned manifests with a cached pnpm store, and a runtime stage tailored to the deployed surface. This keeps the Dockerfiles parallel and easier to maintain.
 
 The API runtime image is leaner than before because it no longer copies every pruned workspace package into the final image. Instead, it carries only root workspace metadata, `node_modules`, `packages/contracts`, `packages/db`, and `apps/api-new`, which is the current runtime boundary implied by the API package graph and migration step. The web runtime remains nginx-only, which was already the right deployment shape.
 
-Repository validation succeeded with `pnpm run check-types` and `pnpm run lint`. Container-build validation could not be completed in this session because the WSL environment does not have Docker or another supported container CLI installed. That is the remaining follow-up step on a Docker-capable machine.
+Repository validation succeeded with `pnpm run check-types` and `pnpm run lint`. The specific Dokploy failure was also reproduced at the package level and addressed by providing a build-only placeholder `DATABASE_URL` in the API Docker builder stage. Container-build validation still could not be completed in this session because the WSL environment does not have Docker or another supported container CLI installed. That is the remaining follow-up step on a Docker-capable machine.
 
 ## Context and Orientation
 
@@ -98,6 +107,12 @@ Also run:
 
 This validates that the workspace remains lint-clean after the operational changes. This command also succeeded on 2026-03-25.
 
+To verify the Prisma-related build path without Docker, run:
+
+    DATABASE_URL=postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public pnpm --filter @advanced-quiz/db build
+
+This exercises the same `prisma generate` step that failed in the container build. This command succeeded on 2026-03-25.
+
 ## Validation and Acceptance
 
 Acceptance is met when both Dockerfiles remain readable multi-stage builds, both still use `turbo prune --docker`, and the following behavior holds:
@@ -130,6 +145,9 @@ Validation evidence from this session:
     pnpm run lint
     Tasks: 5 successful, 5 total
 
+    DATABASE_URL=postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public pnpm --filter @advanced-quiz/db build
+    ✔ Generated Prisma Client (7.5.0) to ./src/generated/prisma
+
     docker version --format '{{.Server.Version}}'
     The command 'docker' could not be found in this WSL 2 distro.
 
@@ -142,3 +160,5 @@ The web Dockerfile at `apps/web-new/Dockerfile` must continue to build the `@adv
 Revision note: Created the initial ExecPlan after auditing the current Dockerfiles, workspace manifests, and Turbo configuration. The chosen scope focuses on Docker-only improvements that fit the current repository contract instead of broader package-script or runtime-architecture changes.
 
 Revision note: Updated the plan after implementation to record the BuildKit cache decision, the `.dockerignore` tightening, the successful `check-types` and `lint` runs, and the environment limitation that blocked local container builds.
+
+Revision note: Updated the plan after the Dokploy failure report to record Prisma's build-time `DATABASE_URL` requirement and the builder-stage placeholder fix.
