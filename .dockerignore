@@ -5,6 +5,7 @@
 **/.git
 **/.vscode
 **/.env*
+!/.env
 !**/.env.example
 execplans
 .agent

@@ -24,6 +24,11 @@ After this change, the API and web containers will build faster from the same mo
 - [x] (2026-03-25 13:39Z) Verified the full `pnpm turbo run build --filter=@advanced-quiz/api` path succeeds even when `PRISMA_BUILD_DATABASE_URL` is explicitly empty.
 - [x] (2026-03-25 13:42Z) Aligned the DB package with Turborepo’s official environment-variable guidance by declaring `DATABASE_URL` on the `build` task in `packages/db/turbo.json`.
 - [x] (2026-03-25 13:42Z) Re-ran the API build path, `pnpm run check-types`, and `pnpm run lint` after the Turborepo config change.
+- [x] (2026-03-25 13:48Z) Simplified the API Docker builder stage by removing the `PRISMA_BUILD_DATABASE_URL` build arg and using a fixed build-only placeholder `DATABASE_URL`.
+- [x] (2026-03-25 13:56Z) Re-ran the API build path and repository checks after the simplification pass.
+- [x] (2026-03-25 13:59Z) Switched the API build path to use the real root `.env` file for `DATABASE_URL` instead of a build-only placeholder value.
+- [x] (2026-03-25 13:59Z) Updated Prisma config and Turbo hashing so the root `.env` file is loaded intentionally and affects task caching.
+- [x] (2026-03-25 13:59Z) Verified the API build path, `pnpm run check-types`, and `pnpm run lint` with a temporary root `.env`, then removed the temporary file.
 
 ## Surprises & Discoveries
 
@@ -44,6 +49,12 @@ After this change, the API and web containers will build faster from the same mo
 
 - Observation: Turborepo’s official environment-variable docs explicitly say that Strict Mode filters task runtime env to declared `env` and `globalEnv`, and that dependency packages with their own build step should declare the required variable in that package’s own `turbo.json`.
   Evidence: Turborepo docs state that Strict Mode only exposes variables listed in config and that when an app depends on a package build task, the package can declare its environment variable in its own `turbo.json` so rebuilds flow through the dependency graph.
+
+- Observation: Once `packages/db/turbo.json` declares `DATABASE_URL` for the `build` task, a Docker build arg is no longer necessary for stability because the image build always uses the same non-secret placeholder value during Prisma client generation.
+  Evidence: The API Dockerfile can set `DATABASE_URL` directly on the build command and still satisfy the same `pnpm turbo run build --filter=@advanced-quiz/api` path.
+
+- Observation: A generic `import "dotenv/config"` in `packages/db/prisma.config.ts` is not enough to support a repo-root `.env` during Docker builds, because the Prisma scripts execute with `/app/packages/db` as the working directory.
+  Evidence: The Docker builder now copies `/app/.env` into the pruned workspace root, and Prisma config explicitly loads `../../.env` relative to `packages/db/prisma.config.ts`.
 
 ## Decision Log
 
@@ -75,13 +86,25 @@ After this change, the API and web containers will build faster from the same mo
   Rationale: This matches Turborepo’s documented Strict Mode behavior and package-level environment-variable guidance, and it keeps cache invalidation correct for the DB package build.
   Date/Author: 2026-03-25 / Codex
 
+- Decision: Prefer a fixed build-only placeholder `DATABASE_URL` in the API Dockerfile over a configurable build arg.
+  Rationale: Simplicity and stability now matter more than configurability. The build step does not use a real deployment database, so a constant placeholder is easier to reason about and avoids deployment-platform differences around empty build args.
+  Date/Author: 2026-03-25 / Codex
+
+- Decision: Prefer the real root `.env` file over a Docker-only placeholder for the API build.
+  Rationale: The user explicitly wants `DATABASE_URL` to come from `.env`, and this repository already uses dotenv-based config. Loading the root `.env` intentionally keeps build behavior aligned with local development rather than inventing a Docker-specific value.
+  Date/Author: 2026-03-25 / Codex
+
+- Decision: Add `.env` to Turborepo `globalDependencies`.
+  Rationale: Turborepo’s docs note that file-based environment inputs must be included in hashing separately from `env`. Since the DB build now reads the root `.env` file directly, cache behavior should change when that file changes.
+  Date/Author: 2026-03-25 / Codex
+
 ## Outcomes & Retrospective
 
 The API and web Dockerfiles now use the same high-level structure: a shared toolchain base, a Turborepo prune stage, a builder stage that installs dependencies from pruned manifests with a cached pnpm store, and a runtime stage tailored to the deployed surface. This keeps the Dockerfiles parallel and easier to maintain.
 
 The API runtime image is leaner than before because it no longer copies every pruned workspace package into the final image. Instead, it carries only root workspace metadata, `node_modules`, `packages/contracts`, `packages/db`, and `apps/api-new`, which is the current runtime boundary implied by the API package graph and migration step. The web runtime remains nginx-only, which was already the right deployment shape.
 
-Repository validation succeeded with `pnpm run check-types` and `pnpm run lint`. The specific Dokploy failure was reproduced at the package level and then addressed in two layers: a build-only placeholder `DATABASE_URL` with shell fallback semantics in the API Docker builder stage, and an explicit `DATABASE_URL` declaration on the `packages/db` `build` task so the setup matches Turborepo’s official Strict Mode guidance. The full `pnpm turbo run build --filter=@advanced-quiz/api` path now succeeds locally. Container-build validation still could not be completed in this session because the WSL environment does not have Docker or another supported container CLI installed. That is the remaining follow-up step on a Docker-capable machine.
+Repository validation succeeded with `pnpm run check-types` and `pnpm run lint`. The specific Dokploy failure was reproduced at the package level and then addressed in two layers that now match the user’s preferred workflow: `packages/db` declares `DATABASE_URL` on its `build` task to match Turborepo’s Strict Mode guidance, and the API Docker builder now uses the real root `.env` file instead of a Docker-only placeholder. Prisma config explicitly loads the repo-root `.env`, and Turborepo hashing now includes that file through `globalDependencies`. Container-build validation still could not be completed in this session because the WSL environment does not have Docker or another supported container CLI installed. That is the remaining follow-up step on a Docker-capable machine.
 
 ## Context and Orientation
 
@@ -89,7 +112,7 @@ This repository lives at `/home/lenovo/advanced-quiz` and is a pnpm workspace ma
 
 The current Dockerfiles already use `turbo prune --docker`. In plain language, pruning means generating a reduced copy of the monorepo that contains only the package manifests and source files required for one target app and its internal dependencies. This is important here because the repository has many workspaces, but each container should install only what its app needs.
 
-The API Dockerfile now uses four stages: a Node base image with pnpm enabled, a prune stage, a builder stage, and a runtime stage. Its runtime stage copies root workspace metadata, the installed workspace `node_modules`, `packages/contracts`, `packages/db`, and `apps/api-new`. The API starts by running `pnpm --filter @advanced-quiz/db db:deploy` and then `pnpm --filter @advanced-quiz/api start:prod`. That means the runtime image must retain pnpm workspace metadata, the database package, the API package, built output, and the Prisma migration tooling required by `db:deploy`.
+The API Dockerfile now uses four stages: a Node base image with pnpm enabled, a prune stage, a builder stage, and a runtime stage. Its builder stage keeps a root `.env` file available for Prisma client generation, while its runtime stage copies root workspace metadata, the installed workspace `node_modules`, `packages/contracts`, `packages/db`, and `apps/api-new`. The API starts by running `pnpm --filter @advanced-quiz/db db:deploy` and then `pnpm --filter @advanced-quiz/api start:prod`. That means the runtime image must retain pnpm workspace metadata, the database package, the API package, built output, and the Prisma migration tooling required by `db:deploy`.
 
 The web Dockerfile now uses the same base, prune, and builder pattern before handing off to an nginx runtime stage. It still has a narrow runtime contract because nginx serves only the static site output in `apps/web-new/dist` and the config file in `apps/web-new/nginx.conf`.
 
@@ -131,11 +154,12 @@ To verify the Prisma-related build path without Docker, run:
 
 This exercises the same `prisma generate` step that failed in the container build. This command succeeded on 2026-03-25.
 
-To verify the full API build path with an explicitly empty build arg, run:
+To verify the full API build path with the root `.env`, run:
 
-    PRISMA_BUILD_DATABASE_URL='' sh -lc 'DATABASE_URL="${PRISMA_BUILD_DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public}" pnpm turbo run build --filter=@advanced-quiz/api'
+    printf 'DATABASE_URL=postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public\n' > .env
+    pnpm turbo run build --filter=@advanced-quiz/api
 
-This mirrors the Docker builder-stage fallback behavior and confirms that an empty platform-provided build arg no longer breaks Prisma client generation. This command succeeded on 2026-03-25.
+This exercises the same `build` graph that the API Dockerfile invokes and confirms that Prisma client generation succeeds from the repo-root `.env`. Remove `.env` after the check if it was created only for testing. This command flow succeeded on 2026-03-25 with a temporary `.env`.
 
 ## Validation and Acceptance
 
@@ -172,10 +196,8 @@ Validation evidence from this session:
     DATABASE_URL=postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public pnpm --filter @advanced-quiz/db build
     ✔ Generated Prisma Client (7.5.0) to ./src/generated/prisma
 
-    PRISMA_BUILD_DATABASE_URL='' sh -lc 'DATABASE_URL="${PRISMA_BUILD_DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public}" pnpm turbo run build --filter=@advanced-quiz/api'
-    Tasks: 3 successful, 3 total
-
-    DATABASE_URL=postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public pnpm turbo run build --filter=@advanced-quiz/api
+    printf 'DATABASE_URL=postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public\n' > .env
+    pnpm turbo run build --filter=@advanced-quiz/api
     Tasks: 3 successful, 3 total
 
     pnpm run check-types
@@ -199,6 +221,8 @@ Revision note: Updated the plan after implementation to record the BuildKit cach
 
 Revision note: Updated the plan after the Dokploy failure report to record Prisma's build-time `DATABASE_URL` requirement and the builder-stage placeholder fix.
 
-Revision note: Updated the plan again after observing that an empty platform-provided build arg can erase a Docker `ARG` default; the builder stage now uses shell fallback expansion to stay robust in that case.
-
 Revision note: Updated the plan again after checking Turborepo’s official environment-variable documentation and aligning `packages/db/turbo.json` with the documented package-level `env` pattern for dependency builds.
+
+Revision note: Updated the plan again during the simplicity/stability pass to remove the now-unnecessary Prisma build arg from the API Dockerfile and prefer a fixed build-only placeholder value.
+
+Revision note: Updated the plan again after the user requested `DATABASE_URL` come from the root `.env`; the API builder now copies `.env`, Prisma config loads the repo-root file explicitly, and Turborepo hashing includes `.env`.

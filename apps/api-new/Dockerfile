@@ -3,7 +3,6 @@
 ARG NODE_VERSION=24.14.0
 ARG PNPM_VERSION=10.31.0
 ARG TURBO_VERSION=2.8.14
-ARG PRISMA_BUILD_DATABASE_URL
 
 FROM node:${NODE_VERSION}-bookworm-slim AS base
 ARG PNPM_VERSION
@@ -18,18 +17,16 @@ RUN corepack enable \
 FROM base AS pruner
 ARG TURBO_VERSION
 COPY . .
+RUN test -f .env || touch .env
 RUN pnpm dlx turbo@${TURBO_VERSION} prune @advanced-quiz/api --docker
 
 FROM base AS builder
-ARG PRISMA_BUILD_DATABASE_URL
 COPY --from=pruner /app/out/json/ .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile
 
 COPY --from=pruner /app/out/full/ .
-# Prisma client generation reads DATABASE_URL from prisma.config.ts during build,
-# but it does not need a real deployment database connection.
-RUN DATABASE_URL="${PRISMA_BUILD_DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public}" \
-  pnpm turbo run build --filter=@advanced-quiz/api
+COPY --from=pruner /app/.env ./.env
+RUN pnpm turbo run build --filter=@advanced-quiz/api
 
 FROM base AS runner
 ENV NODE_ENV=production
