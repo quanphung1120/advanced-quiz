@@ -17,7 +17,6 @@ RUN corepack enable \
 FROM base AS pruner
 ARG TURBO_VERSION
 COPY . .
-RUN test -f .env || touch .env
 RUN pnpm dlx turbo@${TURBO_VERSION} prune @advanced-quiz/api --docker
 
 FROM base AS builder
@@ -25,7 +24,6 @@ COPY --from=pruner /app/out/json/ .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile
 
 COPY --from=pruner /app/out/full/ .
-COPY --from=pruner /app/.env ./.env
 RUN pnpm turbo run build --filter=@advanced-quiz/api
 
 FROM base AS runner
