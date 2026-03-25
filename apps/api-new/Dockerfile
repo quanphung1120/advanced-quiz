@@ -10,7 +10,10 @@ WORKDIR /app
 ENV PNPM_HOME="/pnpm"
 ENV PNPM_STORE_DIR="/pnpm/store"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable \
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/* \
+  && corepack enable \
   && corepack prepare pnpm@${PNPM_VERSION} --activate \
   && pnpm config set store-dir "${PNPM_STORE_DIR}"
 

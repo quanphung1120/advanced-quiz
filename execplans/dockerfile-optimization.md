@@ -10,6 +10,7 @@ After this change, the API and web containers will build faster from the same mo
 
 ## Progress
 
+- [x] (2026-03-25 14:40Z) Patched the API Docker base stage to install `openssl` so Prisma can detect the system SSL library during build and runtime.
 - [x] (2026-03-25 14:25Z) Reproduced the Dokploy failure locally with `pnpm turbo run build --filter=@advanced-quiz/api` in a workspace that had no repo-root `.env`.
 - [x] (2026-03-25 14:25Z) Reworked Prisma client generation to inject a build-only placeholder `DATABASE_URL` when `db:generate` runs without an explicit environment value.
 - [x] (2026-03-25 14:25Z) Removed the API Dockerfile's dependency on copying the repo-root `.env` into the builder stage.
@@ -62,6 +63,9 @@ After this change, the API and web containers will build faster from the same mo
 - Observation: The repo-root `.env` is not present in the current workspace by default, so relying on it for `prisma generate` breaks both Dokploy and a plain local Turbo build.
   Evidence: `ls -la .env` returned `No such file or directory`, and `pnpm turbo run build --filter=@advanced-quiz/api` failed with `PrismaConfigEnvError: Cannot resolve environment variable: DATABASE_URL`.
 
+- Observation: `node:24.14.0-bookworm-slim` does not include the OpenSSL tooling Prisma expects to inspect, so Prisma falls back to `openssl-1.1.x` and emits warnings during image builds.
+  Evidence: Dokploy logged `Prisma failed to detect the libssl/openssl version to use` and recommended `apt-get install -y openssl`.
+
 ## Decision Log
 
 - Decision: Keep both Dockerfiles separate instead of introducing shared generated snippets or a root-level base Dockerfile.
@@ -112,13 +116,17 @@ After this change, the API and web containers will build faster from the same mo
   Rationale: Once Prisma generation no longer depends on a repo-root `.env`, invalidating all build caches on `.env` changes adds churn without changing emitted build artifacts.
   Date/Author: 2026-03-25 / Codex
 
+- Decision: Install `openssl` in the API Docker `base` stage.
+  Rationale: Prisma runs both during the builder phase (`generate`) and at runtime (`migrate deploy`), so the shared base image should provide the system OpenSSL package once for both stages.
+  Date/Author: 2026-03-25 / Codex
+
 ## Outcomes & Retrospective
 
 The API and web Dockerfiles now use the same high-level structure: a shared toolchain base, a Turborepo prune stage, a builder stage that installs dependencies from pruned manifests with a cached pnpm store, and a runtime stage tailored to the deployed surface. This keeps the Dockerfiles parallel and easier to maintain.
 
 The API runtime image is leaner than before because it no longer copies every pruned workspace package into the final image. Instead, it carries only root workspace metadata, `node_modules`, `packages/contracts`, `packages/db`, and `apps/api-new`, which is the current runtime boundary implied by the API package graph and migration step. The web runtime remains nginx-only, which was already the right deployment shape.
 
-Repository validation originally succeeded only when a temporary root `.env` was created. After reproducing the failure again in a clean workspace with no root `.env`, the fix moved deeper into the DB package: `packages/db/scripts/prisma-generate.mjs` now injects a build-only placeholder `DATABASE_URL` only for Prisma client generation, and the API Docker builder no longer needs to copy `.env` into the build context. This keeps runtime migration and startup behavior strict while letting local Turbo builds and Dokploy image builds succeed in environments that have not materialized a repo-root `.env`. Container-build validation still could not be completed in this session because the WSL environment does not have Docker or another supported container CLI installed. That is the remaining follow-up step on a Docker-capable machine.
+Repository validation originally succeeded only when a temporary root `.env` was created. After reproducing the failure again in a clean workspace with no root `.env`, the fix moved deeper into the DB package: `packages/db/scripts/prisma-generate.mjs` now injects a build-only placeholder `DATABASE_URL` only for Prisma client generation, and the API Docker builder no longer needs to copy `.env` into the build context. A follow-up deployment log then exposed a second container-only issue: Prisma warned that the slim Node image lacked OpenSSL detection support. The API Docker `base` stage now installs `openssl` so both build-time Prisma generation and runtime migrations see the expected system library. Container-build validation still could not be completed in this session because the WSL environment does not have Docker or another supported container CLI installed. That is the remaining follow-up step on a Docker-capable machine.
 
 ## Context and Orientation
 
@@ -238,3 +246,5 @@ Revision note: Updated the plan again after checking Turborepo’s official envi
 Revision note: Updated the plan again during the simplicity/stability pass to remove the now-unnecessary Prisma build arg from the API Dockerfile and prefer a fixed build-only placeholder value.
 
 Revision note: Updated the plan again after reproducing the failure locally without a root `.env`; the durable fix now lives in `packages/db` so Prisma client generation can use a build-only placeholder while Docker and local Turbo builds stop depending on copying `.env` into the builder context.
+
+Revision note: Updated the plan again after Dokploy reported Prisma OpenSSL warnings; the API Docker `base` stage now installs `openssl` so Prisma can detect the system SSL library in both builder and runner stages.
