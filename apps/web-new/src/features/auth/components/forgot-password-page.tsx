@@ -6,10 +6,19 @@ import {
   forgotPasswordBodySchema,
   type ForgotPasswordBody,
 } from "@advanced-quiz/contracts";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import {
+  Alert,
+  AlertDescription,
+} from "@advanced-quiz/ui/components/alert";
+import { Button } from "@advanced-quiz/ui/components/button";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@advanced-quiz/ui/components/field";
+import { Input } from "@advanced-quiz/ui/components/input";
 import { forgotPassword } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
 
@@ -57,30 +66,41 @@ export function ForgotPasswordPage() {
       footerActionLabel="Sign in"
       footerActionTo="/sign-in"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {error ? <Alert variant="destructive">{error}</Alert> : null}
-        {success ? <Alert variant="success">{success}</Alert> : null}
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+        {success ? (
+          <Alert>
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        ) : null}
 
-        <Field>
-          <FieldLabel htmlFor="email">
-            Email
-          </FieldLabel>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="name@example.com"
-            {...register("email", { required: "Email is required" })}
-            className="rounded-none text-base focus:bg-background"
-          />
-          {errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
-        </Field>
+        <FieldGroup>
+          <Field data-invalid={errors.email ? true : undefined}>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <FieldContent>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="name@example.com"
+                aria-invalid={errors.email ? true : undefined}
+                {...register("email", { required: "Email is required" })}
+                className="h-12 bg-background px-4 text-base"
+              />
+              <FieldError errors={errors.email ? [errors.email] : undefined} />
+            </FieldContent>
+          </Field>
+        </FieldGroup>
 
         <Button
           type="submit"
           disabled={loading}
           size="lg"
-          className="h-12 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
+          className="h-12 w-full text-base font-bold"
         >
           {loading ? "Sending reset link…" : "Send reset link"}
         </Button>

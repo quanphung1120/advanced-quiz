@@ -1,9 +1,9 @@
 import { Controller, Get, Inject, Query, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { AuthGuard } from "../auth/auth.guard";
-import { CurrentUser } from "../auth/current-user.decorator";
-import type { AuthenticatedUser } from "../common/authenticated-request";
-import { UsersService } from "./users.service";
+import { AuthGuard } from "../auth/auth.guard.js";
+import { CurrentUser } from "../auth/current-user.decorator.js";
+import type { AuthenticatedUser } from "../common/authenticated-request.js";
+import { UsersService } from "./users.service.js";
 
 @ApiTags("users")
 @ApiCookieAuth()

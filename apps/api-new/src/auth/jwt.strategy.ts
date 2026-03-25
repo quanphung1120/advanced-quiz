@@ -2,25 +2,20 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 import { PassportStrategy } from "@nestjs/passport";
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { FastifyRequest } from "fastify";
-import { UsersService } from "../users/users.service";
-import type { JwtPayload } from "./auth.types";
+import type { Request } from "express";
+import { UsersService } from "../users/users.service.js";
+import type { JwtPayload } from "./auth.types.js";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    @Inject(ConfigService)
-    private readonly configService: ConfigService,
+    configService: ConfigService,
     @Inject(UsersService)
     private readonly usersService: UsersService,
   ) {
     super({
-      jwtFromRequest: (req: FastifyRequest) => {
-        let token: string | null = null;
-        if (req && req.cookies) {
-          token =
-            (req.cookies as Record<string, string>)["access_token"] ?? null;
-        }
+      jwtFromRequest: (req: Request) => {
+        const token = req?.cookies?.["access_token"] ?? null;
         return token ?? ExtractJwt.fromAuthHeaderAsBearerToken()(req as never);
       },
       ignoreExpiration: false,

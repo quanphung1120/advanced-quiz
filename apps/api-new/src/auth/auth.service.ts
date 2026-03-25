@@ -9,52 +9,48 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { ConfigService, type ConfigType } from "@nestjs/config";
+import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import type {
   ForgotPasswordBody,
   RegisterResponse,
   ResetPasswordBody,
   ResendVerificationBody,
-  SessionUser,
   SignInBody,
   SignInResponse,
   SignUpBody,
   VerifyEmailBody,
 } from "@advanced-quiz/contracts";
 import * as bcrypt from "bcrypt";
+import { DatabaseService } from "../database/database.service.js";
+import { UsersService } from "../users/users.service.js";
+import { AuthMailerService } from "./auth.mailer.js";
+import type { JwtPayload } from "./auth.types.js";
 import {
-  createHmac,
-  randomBytes,
-  randomInt,
-  randomUUID,
-  timingSafeEqual,
-} from "node:crypto";
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+  ACCESS_TOKEN_TTL_SECONDS,
+  EMAIL_OTP_EXPIRY_MINUTES,
+  EMAIL_OTP_RESEND_COOLDOWN_SECONDS,
+  MAX_OTP_ATTEMPTS,
+  PASSWORD_RESET_EXPIRY_MINUTES,
+  PASSWORD_RESET_RESEND_COOLDOWN_SECONDS,
+  REFRESH_TOKEN_TTL,
+} from "./auth.constants.js";
 import {
-  type DatabaseClient,
-  emailOtps,
-  passwordResetTokens,
-  refreshTokens,
-  users,
-} from "@advanced-quiz/db";
-import { DATABASE } from "../database/database.service";
-import { UsersService } from "../users/users.service";
-import { AuthMailerService } from "./auth.mailer";
-import type { JwtPayload } from "./auth.types";
+  compareSecretHash,
+  generateOtp,
+  generateResetToken,
+  hashSecret,
+  isWithinCooldown,
+  minutesFromNow,
+  toSessionUser,
+  type AuthSessionUser,
+  verifyRefreshToken,
+} from "./auth.utils.js";
 
 type AuthTokens = {
   accessToken: string;
   refreshToken: string;
 };
-
-const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
-const REFRESH_TOKEN_TTL = "7d";
-const EMAIL_OTP_EXPIRY_MINUTES = 10;
-const PASSWORD_RESET_EXPIRY_MINUTES = 30;
-const EMAIL_OTP_RESEND_COOLDOWN_SECONDS = 60;
-const PASSWORD_RESET_RESEND_COOLDOWN_SECONDS = 60;
-const MAX_OTP_ATTEMPTS = 5;
 
 @Injectable()
 export class AuthService {
@@ -62,18 +58,19 @@ export class AuthService {
   private readonly webUrl: string;
 
   constructor(
-    @Inject(UsersService)
     private readonly usersService: UsersService,
-    @Inject(JwtService)
     private readonly jwtService: JwtService,
-    @Inject(DATABASE) private readonly database: DatabaseClient,
-    @Inject(AuthMailerService)
+    @Inject(DatabaseService)
+    private readonly databaseService: DatabaseService,
     private readonly authMailerService: AuthMailerService,
-    @Inject(ConfigService)
-    private configService: ConfigService,
+    private readonly configService: ConfigService,
   ) {
     this.authSecret = this.configService.getOrThrow<string>("AUTH_SECRET");
     this.webUrl = this.configService.getOrThrow<string>("WEB_URL");
+  }
+
+  private get database() {
+    return this.databaseService.database;
   }
 
   async register(data: SignUpBody): Promise<RegisterResponse> {
@@ -122,8 +119,9 @@ export class AuthService {
       try {
         await this.resendVerification({ email: user.email });
       } catch {
-        // best-effort resend; proceed to throw the verification-required error
+        // Best effort; proceed with the verification-required error either way.
       }
+
       throw new ForbiddenException({
         statusCode: 403,
         error: "Forbidden",
@@ -150,12 +148,14 @@ export class AuthService {
       return this.createAuthenticatedSession(user);
     }
 
-    const otpRecord = await this.database.query.emailOtps.findFirst({
-      where: and(
-        eq(emailOtps.userId, user.id),
-        eq(emailOtps.purpose, "email_verification"),
-      ),
-      orderBy: [desc(emailOtps.createdAt)],
+    const otpRecord = await this.database.emailOtp.findFirst({
+      where: {
+        userId: user.id,
+        purpose: "email_verification",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
     const now = new Date();
@@ -164,54 +164,55 @@ export class AuthService {
       throw new BadRequestException("Invalid or expired verification code");
     }
 
-    const codeHash = this.hashSecret(data.otp);
-    const hashesMatch = timingSafeEqual(
-      Buffer.from(otpRecord.codeHash, "hex"),
-      Buffer.from(codeHash, "hex"),
+    const hashesMatch = compareSecretHash(
+      otpRecord.codeHash,
+      data.otp,
+      this.authSecret,
     );
-    if (!hashesMatch) {
-      const [updated] = await this.database
-        .update(emailOtps)
-        .set({ attempts: sql`${emailOtps.attempts} + 1` })
-        .where(eq(emailOtps.id, otpRecord.id))
-        .returning({ attempts: emailOtps.attempts });
 
-      if ((updated?.attempts ?? 0) >= MAX_OTP_ATTEMPTS) {
-        await this.database
-          .delete(emailOtps)
-          .where(
-            and(
-              eq(emailOtps.userId, user.id),
-              eq(emailOtps.purpose, "email_verification"),
-            ),
-          );
+    if (!hashesMatch) {
+      const updated = await this.database.emailOtp.update({
+        where: { id: otpRecord.id },
+        data: {
+          attempts: {
+            increment: 1,
+          },
+        },
+        select: {
+          attempts: true,
+        },
+      });
+
+      if (updated.attempts >= MAX_OTP_ATTEMPTS) {
+        await this.database.emailOtp.deleteMany({
+          where: {
+            userId: user.id,
+            purpose: "email_verification",
+          },
+        });
       }
 
       throw new BadRequestException("Invalid or expired verification code");
     }
 
-    const [verifiedUser] = await this.database
-      .update(users)
-      .set({
-        emailVerified: true,
-        emailVerifiedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(users.id, user.id))
-      .returning();
+    const verifiedUser = await this.database.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: user.id },
+        data: {
+          emailVerified: true,
+          emailVerifiedAt: now,
+        },
+      });
 
-    if (!verifiedUser) {
-      throw new InternalServerErrorException("Unable to verify account");
-    }
+      await tx.emailOtp.deleteMany({
+        where: {
+          userId: user.id,
+          purpose: "email_verification",
+        },
+      });
 
-    await this.database
-      .delete(emailOtps)
-      .where(
-        and(
-          eq(emailOtps.userId, user.id),
-          eq(emailOtps.purpose, "email_verification"),
-        ),
-      );
+      return updatedUser;
+    });
 
     return this.createAuthenticatedSession(verifiedUser);
   }
@@ -226,17 +227,19 @@ export class AuthService {
       };
     }
 
-    const existingOtp = await this.database.query.emailOtps.findFirst({
-      where: and(
-        eq(emailOtps.userId, user.id),
-        eq(emailOtps.purpose, "email_verification"),
-      ),
-      orderBy: [desc(emailOtps.createdAt)],
+    const existingOtp = await this.database.emailOtp.findFirst({
+      where: {
+        userId: user.id,
+        purpose: "email_verification",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
     if (
       existingOtp &&
-      this.isWithinCooldown(
+      isWithinCooldown(
         existingOtp.lastSentAt,
         EMAIL_OTP_RESEND_COOLDOWN_SECONDS,
       )
@@ -265,18 +268,19 @@ export class AuthService {
       };
     }
 
-    const existingToken =
-      await this.database.query.passwordResetTokens.findFirst({
-        where: and(
-          eq(passwordResetTokens.userId, user.id),
-          isNull(passwordResetTokens.usedAt),
-        ),
-        orderBy: [desc(passwordResetTokens.createdAt)],
-      });
+    const existingToken = await this.database.passwordResetToken.findFirst({
+      where: {
+        userId: user.id,
+        usedAt: null,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
     if (
       existingToken &&
-      this.isWithinCooldown(
+      isWithinCooldown(
         existingToken.createdAt,
         PASSWORD_RESET_RESEND_COOLDOWN_SECONDS,
       )
@@ -287,19 +291,22 @@ export class AuthService {
       };
     }
 
-    await this.database
-      .delete(passwordResetTokens)
-      .where(eq(passwordResetTokens.userId, user.id));
+    await this.database.passwordResetToken.deleteMany({
+      where: {
+        userId: user.id,
+      },
+    });
 
-    const resetToken = this.generateResetToken();
-    const resetTokenHash = this.hashSecret(resetToken);
-    const expiresAt = this.minutesFromNow(PASSWORD_RESET_EXPIRY_MINUTES);
+    const resetToken = generateResetToken();
+    const resetTokenHash = hashSecret(this.authSecret, resetToken);
+    const expiresAt = minutesFromNow(PASSWORD_RESET_EXPIRY_MINUTES);
 
-    await this.database.insert(passwordResetTokens).values({
-      id: randomUUID(),
-      userId: user.id,
-      tokenHash: resetTokenHash,
-      expiresAt,
+    await this.database.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: resetTokenHash,
+        expiresAt,
+      },
     });
 
     const resetUrl = new URL("/reset-password", this.webUrl);
@@ -314,14 +321,12 @@ export class AuthService {
         idempotencyKey: `password-reset:${resetTokenHash}`,
       });
     } catch {
-      await this.database
-        .delete(passwordResetTokens)
-        .where(
-          and(
-            eq(passwordResetTokens.userId, user.id),
-            eq(passwordResetTokens.tokenHash, resetTokenHash),
-          ),
-        );
+      await this.database.passwordResetToken.deleteMany({
+        where: {
+          userId: user.id,
+          tokenHash: resetTokenHash,
+        },
+      });
       throw new InternalServerErrorException(
         "Unable to send password reset email",
       );
@@ -334,18 +339,18 @@ export class AuthService {
   }
 
   async resetPassword(data: ResetPasswordBody) {
-    const tokenHash = this.hashSecret(data.token);
+    const tokenHash = hashSecret(this.authSecret, data.token);
     const now = new Date();
 
-    const resetRecord = await this.database.query.passwordResetTokens.findFirst(
-      {
-        where: and(
-          eq(passwordResetTokens.tokenHash, tokenHash),
-          isNull(passwordResetTokens.usedAt),
-          gt(passwordResetTokens.expiresAt, now),
-        ),
+    const resetRecord = await this.database.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: {
+          gt: now,
+        },
       },
-    );
+    });
 
     if (!resetRecord) {
       throw new BadRequestException("Invalid or expired password reset link");
@@ -353,27 +358,22 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(data.password, 12);
 
-    await this.database.transaction(async (tx) => {
-      await tx
-        .update(users)
-        .set({
+    await this.database.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: resetRecord.userId },
+        data: {
           password: passwordHash,
           passwordChangedAt: now,
-          updatedAt: now,
-        })
-        .where(eq(users.id, resetRecord.userId));
+        },
+      });
 
-      await tx
-        .delete(passwordResetTokens)
-        .where(eq(passwordResetTokens.id, resetRecord.id));
+      await tx.passwordResetToken.deleteMany({
+        where: { userId: resetRecord.userId },
+      });
 
-      await tx
-        .delete(passwordResetTokens)
-        .where(eq(passwordResetTokens.userId, resetRecord.userId));
-
-      await tx
-        .delete(refreshTokens)
-        .where(eq(refreshTokens.userId, resetRecord.userId));
+      await tx.refreshToken.deleteMany({
+        where: { userId: resetRecord.userId },
+      });
     });
 
     return {
@@ -382,7 +382,7 @@ export class AuthService {
   }
 
   async refreshSession(refreshToken: string) {
-    const payload = this.verifyRefreshToken(refreshToken);
+    const payload = verifyRefreshToken(this.jwtService, refreshToken);
 
     const user = await this.usersService.findById(payload.sub);
     if (!user) {
@@ -415,17 +415,19 @@ export class AuthService {
     email: string;
     name: string;
   }) {
-    const existingOtp = await this.database.query.emailOtps.findFirst({
-      where: and(
-        eq(emailOtps.userId, user.id),
-        eq(emailOtps.purpose, "email_verification"),
-      ),
-      orderBy: [desc(emailOtps.createdAt)],
+    const existingOtp = await this.database.emailOtp.findFirst({
+      where: {
+        userId: user.id,
+        purpose: "email_verification",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
     if (
       existingOtp &&
-      this.isWithinCooldown(
+      isWithinCooldown(
         existingOtp.lastSentAt,
         EMAIL_OTP_RESEND_COOLDOWN_SECONDS,
       )
@@ -436,35 +438,28 @@ export class AuthService {
       );
     }
 
-    const otp = this.generateOtp();
-    const codeHash = this.hashSecret(otp);
-    const expiresAt = this.minutesFromNow(EMAIL_OTP_EXPIRY_MINUTES);
+    const otp = generateOtp();
+    const codeHash = hashSecret(this.authSecret, otp);
+    const expiresAt = minutesFromNow(EMAIL_OTP_EXPIRY_MINUTES);
 
-    await this.database
-      .delete(emailOtps)
-      .where(
-        and(
-          eq(emailOtps.userId, user.id),
-          eq(emailOtps.purpose, "email_verification"),
-        ),
-      );
+    await this.database.emailOtp.deleteMany({
+      where: {
+        userId: user.id,
+        purpose: "email_verification",
+      },
+    });
 
-    const [otpRecord] = await this.database
-      .insert(emailOtps)
-      .values({
-        id: randomUUID(),
+    const otpRecord = await this.database.emailOtp.create({
+      data: {
         userId: user.id,
         purpose: "email_verification",
         codeHash,
         expiresAt,
-      })
-      .returning({ id: emailOtps.id });
-
-    if (!otpRecord) {
-      throw new InternalServerErrorException(
-        "Unable to create verification request",
-      );
-    }
+      },
+      select: {
+        id: true,
+      },
+    });
 
     try {
       await this.authMailerService.sendVerificationOtp({
@@ -475,21 +470,18 @@ export class AuthService {
         idempotencyKey: `email-otp:${otpRecord.id}`,
       });
     } catch {
-      await this.database
-        .delete(emailOtps)
-        .where(eq(emailOtps.id, otpRecord.id));
+      await this.database.emailOtp.deleteMany({
+        where: { id: otpRecord.id },
+      });
       throw new InternalServerErrorException(
         "Unable to send verification email",
       );
     }
   }
 
-  private async createAuthenticatedSession(user: {
-    id: string;
-    email: string;
-    name: string;
-    emailVerified: boolean;
-  }): Promise<SignInResponse & AuthTokens> {
+  private async createAuthenticatedSession(
+    user: AuthSessionUser,
+  ): Promise<SignInResponse & AuthTokens> {
     const accessPayload: JwtPayload = {
       sub: user.id,
       email: user.email,
@@ -513,58 +505,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: this.toSessionUser(user),
+      user: toSessionUser(user),
     };
-  }
-
-  private verifyRefreshToken(token: string) {
-    try {
-      const payload = this.jwtService.verify<JwtPayload>(token);
-
-      if (payload.type !== "refresh") {
-        throw new UnauthorizedException("Invalid refresh token");
-      }
-
-      return payload;
-    } catch {
-      throw new UnauthorizedException("Invalid refresh token");
-    }
-  }
-
-  private toSessionUser(user: {
-    id: string;
-    email: string;
-    name: string;
-    emailVerified: boolean;
-  }): SessionUser {
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      emailVerified: user.emailVerified,
-      image: null,
-    };
-  }
-
-  private hashSecret(value: string) {
-    return createHmac("sha256", this.authSecret).update(value).digest("hex");
-  }
-
-  private generateOtp() {
-    return randomInt(0, 1_000_000).toString().padStart(6, "0");
-  }
-
-  private generateResetToken() {
-    return randomBytes(32).toString("base64url");
-  }
-
-  private minutesFromNow(minutes: number) {
-    const date = new Date();
-    date.setMinutes(date.getMinutes() + minutes);
-    return date;
-  }
-
-  private isWithinCooldown(date: Date, cooldownSeconds: number) {
-    return Date.now() - date.getTime() < cooldownSeconds * 1000;
   }
 }

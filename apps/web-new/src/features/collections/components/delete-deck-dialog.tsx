@@ -3,17 +3,21 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogBody,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@advanced-quiz/ui/components/alert-dialog";
+import { Button } from "@advanced-quiz/ui/components/button";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@advanced-quiz/ui/components/field";
+import { Input } from "@advanced-quiz/ui/components/input";
 import { Trash2 } from "lucide-react";
 
 const deleteDeckSchema = z.object({
@@ -67,19 +71,19 @@ export function DeleteDeckDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <DialogHeader className="pr-8">
-            <DialogTitle className="text-lg font-semibold">
+    <AlertDialog open={open} onOpenChange={handleClose}>
+      <AlertDialogContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+          <AlertDialogHeader className="pr-8">
+            <AlertDialogTitle className="text-lg font-semibold">
               Delete deck
-            </DialogTitle>
-            <DialogDescription className="text-sm">
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
               This will permanently delete this deck and all its cards.
-            </DialogDescription>
-          </DialogHeader>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-          <DialogBody className="mt-0">
+          <FieldGroup>
             <Field>
               <FieldLabel className="text-[13px] normal-case tracking-normal text-foreground">
                 Type <span className="font-semibold text-primary">{deckName}</span>{" "}
@@ -99,9 +103,9 @@ export function DeleteDeckDialog({
                 </FieldError>
               ) : null}
             </Field>
-          </DialogBody>
+          </FieldGroup>
 
-          <DialogFooter className="mt-0 border-t-0 pt-0">
+          <AlertDialogFooter>
             <Button
               type="button"
               variant="outline"
@@ -120,9 +124,9 @@ export function DeleteDeckDialog({
               <Trash2 className="h-3.5 w-3.5" />
               Delete
             </Button>
-          </DialogFooter>
+          </AlertDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

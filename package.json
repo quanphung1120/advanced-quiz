@@ -4,12 +4,15 @@
   "packageManager": "pnpm@10.31.0",
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev --filter=@advanced-quiz/api --filter=@advanced-quiz/web",
-    "dev:api": "turbo run dev --filter=@advanced-quiz/api",
-    "dev:web": "turbo run dev --filter=@advanced-quiz/web",
+    "dev": "turbo run dev --filter=@advanced-quiz/api... --filter=@advanced-quiz/web...",
+    "dev:api": "turbo run dev --filter=@advanced-quiz/api...",
+    "dev:web": "turbo run dev --filter=@advanced-quiz/web...",
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "format": "pnpm run format:root && turbo run format",
+    "format:check": "pnpm run format:check:root && turbo run format:check",
+    "format:root": "prettier --write package.json pnpm-workspace.yaml turbo.json tsconfig.json .prettierrc.json",
+    "format:check:root": "prettier --check package.json pnpm-workspace.yaml turbo.json tsconfig.json .prettierrc.json",
     "db:generate": "turbo run db:generate --filter=@advanced-quiz/db",
     "db:migrate": "turbo run db:migrate --filter=@advanced-quiz/db",
     "db:deploy": "turbo run db:deploy --filter=@advanced-quiz/db",
@@ -17,6 +20,8 @@
     "db:studio": "turbo run db:studio --filter=@advanced-quiz/db"
   },
   "devDependencies": {
+    "@advanced-quiz/eslint-config": "workspace:*",
+    "@advanced-quiz/typescript-config": "workspace:*",
     "prettier": "^3.6.2",
     "turbo": "^2.8.14",
     "typescript": "5.9.3"

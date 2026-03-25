@@ -1,16 +1,19 @@
-import { Injectable, type OnApplicationShutdown } from "@nestjs/common";
-import { db, pool } from "@advanced-quiz/db";
-
-export const DATABASE = Symbol("DATABASE");
-
-export const databaseProvider = {
-  provide: DATABASE,
-  useValue: db,
-};
+import {
+  Injectable,
+  type OnApplicationShutdown,
+  type OnModuleInit,
+} from "@nestjs/common";
+import { prisma, type DatabaseClient } from "@advanced-quiz/db";
 
 @Injectable()
-export class DatabaseLifecycleService implements OnApplicationShutdown {
+export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
+  readonly database: DatabaseClient = prisma;
+
+  async onModuleInit() {
+    await this.database.$connect();
+  }
+
   async onApplicationShutdown() {
-    await pool.end();
+    await this.database.$disconnect();
   }
 }

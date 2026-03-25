@@ -36,6 +36,19 @@ export const sessionUserSchema = z.object({
 });
 export type SessionUser = z.infer<typeof sessionUserSchema>;
 
+export const uiMessageRoleSchema = z.enum(["system", "user", "assistant"]);
+export type UIMessageRole = z.infer<typeof uiMessageRoleSchema>;
+
+export const uiMessageSchema = z
+  .object({
+    id: z.string(),
+    role: uiMessageRoleSchema,
+    parts: z.array(z.unknown()),
+    metadata: z.unknown().optional(),
+  })
+  .passthrough();
+export type PersistedUIMessage = z.infer<typeof uiMessageSchema>;
+
 export const passwordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters")
@@ -258,6 +271,56 @@ export const clearProgressResponseSchema = z.object({
   deleted: z.number(),
   message: z.string(),
 });
+
+export const chatSessionSummarySchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  preview: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ChatSessionSummary = z.infer<typeof chatSessionSummarySchema>;
+
+export const chatSessionDetailSchema = chatSessionSummarySchema.extend({
+  messages: z.array(uiMessageSchema),
+});
+export type ChatSessionDetail = z.infer<typeof chatSessionDetailSchema>;
+
+export const listChatSessionsResponseSchema = z.object({
+  sessions: z.array(chatSessionSummarySchema),
+});
+export type ListChatSessionsResponse = z.infer<
+  typeof listChatSessionsResponseSchema
+>;
+
+export const getChatSessionResponseSchema = z.object({
+  session: chatSessionDetailSchema,
+});
+export type GetChatSessionResponse = z.infer<
+  typeof getChatSessionResponseSchema
+>;
+
+export const createChatSessionBodySchema = z.object({
+  messages: z.array(uiMessageSchema).optional(),
+});
+export type CreateChatSessionBody = z.infer<typeof createChatSessionBodySchema>;
+
+export const createChatSessionResponseSchema = z.object({
+  session: chatSessionDetailSchema,
+});
+export type CreateChatSessionResponse = z.infer<
+  typeof createChatSessionResponseSchema
+>;
+
+export const streamChatSessionBodySchema = z.object({
+  message: uiMessageSchema,
+});
+export type StreamChatSessionBody = z.infer<typeof streamChatSessionBodySchema>;
+
+export const streamDraftChatBodySchema = z.object({
+  message: uiMessageSchema,
+});
+export type StreamDraftChatBody = z.infer<typeof streamDraftChatBodySchema>;
 export type ClearProgressResponse = z.infer<typeof clearProgressResponseSchema>;
 
 export const userProfileResponseSchema = z.object({

@@ -1,21 +1,26 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { startTransition, useMemo, useState } from "react";
+import { startTransition, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useForm, useWatch } from "react-hook-form";
 import {
   verifyEmailBodySchema,
   type VerifyEmailBody,
 } from "@advanced-quiz/contracts";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import {
+  Alert,
+  AlertDescription,
+} from "@advanced-quiz/ui/components/alert";
+import { Button } from "@advanced-quiz/ui/components/button";
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
+  FieldGroup,
   FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+} from "@advanced-quiz/ui/components/field";
+import { Input } from "@advanced-quiz/ui/components/input";
 import {
   resendVerification,
   verifyEmail,
@@ -39,10 +44,7 @@ export function VerifyEmailPage() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
 
-  const initialEmail = useMemo(
-    () => searchParams.get("email")?.trim() ?? "",
-    [searchParams],
-  );
+  const initialEmail = searchParams.get("email")?.trim() ?? "";
 
   const {
     register,
@@ -118,62 +120,77 @@ export function VerifyEmailPage() {
       footerActionLabel="Sign in"
       footerActionTo="/sign-in"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {error ? <Alert variant="destructive">{error}</Alert> : null}
-        {success ? <Alert variant="success">{success}</Alert> : null}
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+        {success ? (
+          <Alert>
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        ) : null}
 
-        <Field>
-          <FieldLabel htmlFor="email">
-            Email
-          </FieldLabel>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="name@example.com"
-            {...register("email", { required: "Email is required" })}
-            className="rounded-none text-base focus:bg-background"
-          />
-          {errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
-        </Field>
+        <FieldGroup>
+          <Field data-invalid={errors.email ? true : undefined}>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <FieldContent>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="name@example.com"
+                aria-invalid={errors.email ? true : undefined}
+                {...register("email", { required: "Email is required" })}
+                className="h-12 bg-background px-4 text-base"
+              />
+              <FieldError errors={errors.email ? [errors.email] : undefined} />
+            </FieldContent>
+          </Field>
 
-        <Field>
-          <FieldLabel htmlFor="otp">
-            Verification code
-          </FieldLabel>
-          <Input
-            id="otp"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            placeholder="123456"
-            {...register("otp", { required: "Verification code is required" })}
-            className="rounded-none text-base focus:bg-background"
-          />
-          {errors.otp ? <FieldError>{errors.otp.message}</FieldError> : null}
-          <FieldDescription>
-            The code expires quickly. If it has lapsed, request a new one.
-          </FieldDescription>
-        </Field>
+          <Field data-invalid={errors.otp ? true : undefined}>
+            <FieldLabel htmlFor="otp">Verification code</FieldLabel>
+            <FieldContent>
+              <Input
+                id="otp"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                placeholder="123456"
+                aria-invalid={errors.otp ? true : undefined}
+                {...register("otp", {
+                  required: "Verification code is required",
+                })}
+                className="h-12 bg-background px-4 text-base"
+              />
+              <FieldError errors={errors.otp ? [errors.otp] : undefined} />
+              <FieldDescription>
+                The code expires quickly. If it has lapsed, request a new one.
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        </FieldGroup>
 
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           <Button
             type="submit"
             disabled={loading}
             size="lg"
-            className="h-12 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
+            className="h-12 w-full text-base font-bold"
           >
             {loading ? "Verifying…" : "Verify email"}
           </Button>
-          <button
+          <Button
             type="button"
             onClick={handleResend}
             disabled={resending}
-            className="w-full text-center text-sm font-semibold text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            variant="ghost"
+            className="h-auto w-full justify-center px-0"
           >
             {resending ? "Sending a new code…" : "Resend verification code"}
-          </button>
+          </Button>
         </div>
 
         <p className="text-center text-sm font-medium text-muted-foreground">

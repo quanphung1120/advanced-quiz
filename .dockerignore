@@ -6,6 +6,11 @@
 **/.vscode
 **/.env*
 !**/.env.example
+execplans
+.agent
+AGENTS.md
+PLANS.md
+README.md
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

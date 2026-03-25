@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Inject,
   Param,
   Post,
   Put,
@@ -20,21 +19,18 @@ import {
   updateFlashcardBodySchema,
 } from "@advanced-quiz/contracts";
 import { ApiCookieAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { AuthGuard } from "../auth/auth.guard";
-import { CurrentUser } from "../auth/current-user.decorator";
-import type { AuthenticatedUser } from "../common/authenticated-request";
-import { parseWithSchema } from "../common/http-exception.util";
-import { CollectionsService } from "./collections.service";
+import { AuthGuard } from "../auth/auth.guard.js";
+import { CurrentUser } from "../auth/current-user.decorator.js";
+import type { AuthenticatedUser } from "../common/authenticated-request.js";
+import { parseWithSchema } from "../common/http-exception.util.js";
+import { CollectionsService } from "./collections.service.js";
 
 @ApiTags("collections")
 @ApiCookieAuth()
 @UseGuards(AuthGuard)
 @Controller("api/v1/collections")
 export class CollectionsController {
-  constructor(
-    @Inject(CollectionsService)
-    private readonly collectionsService: CollectionsService,
-  ) {}
+  constructor(private readonly collectionsService: CollectionsService) {}
 
   @Get("me")
   @ApiOperation({ summary: "List current user's owned and shared collections" })

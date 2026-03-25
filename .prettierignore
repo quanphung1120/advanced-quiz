@@ -1,0 +1,10 @@
+node_modules
+.turbo
+dist
+coverage
+*.tsbuildinfo
+pnpm-lock.yaml
+
+packages/db/drizzle
+packages/db/src/generated
+packages/db/prisma.config.js

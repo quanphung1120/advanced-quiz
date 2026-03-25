@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { FlashcardType } from "@advanced-quiz/contracts";
 import { flashcardsApi } from "../api/flashcards-api";
 
 export function useFlashcards(collectionId: string) {
@@ -21,7 +22,7 @@ export function useCreateFlashcard() {
       data: {
         question: string;
         answer: string;
-        type?: string;
+        type?: FlashcardType;
       };
     }) =>
       flashcardsApi.create({
@@ -50,7 +51,7 @@ export function useUpdateFlashcard() {
       data: {
         question?: string;
         answer?: string;
-        type?: string;
+        type?: FlashcardType;
       };
     }) => flashcardsApi.update(collectionId, id, data),
     onSuccess: (_flashcard, variables) => {

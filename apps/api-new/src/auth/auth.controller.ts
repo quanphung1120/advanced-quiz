@@ -3,7 +3,6 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
-  Inject,
   Post,
   Req,
   Res,
@@ -11,6 +10,7 @@ import {
   UsePipes,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import type { CookieOptions, Request, Response } from "express";
 import {
   ApiBody,
   ApiCookieAuth,
@@ -18,7 +18,6 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import type { FastifyReply, FastifyRequest } from "fastify";
 import {
   forgotPasswordBodySchema,
   resetPasswordBodySchema,
@@ -33,11 +32,11 @@ import {
   type SignUpBody,
   type VerifyEmailBody,
 } from "@advanced-quiz/contracts";
-import { ZodValidationPipe } from "../common/zod-validation.pipe";
-import { AuthGuard } from "./auth.guard";
-import { AuthService } from "./auth.service";
-import { CurrentUser } from "./current-user.decorator";
-import type { AuthenticatedUser } from "../common/authenticated-request";
+import { ZodValidationPipe } from "../common/zod-validation.pipe.js";
+import { AuthGuard } from "./auth.guard.js";
+import { AuthService } from "./auth.service.js";
+import { CurrentUser } from "./current-user.decorator.js";
+import type { AuthenticatedUser } from "../common/authenticated-request.js";
 
 const ACCESS_COOKIE_MAX_AGE_SECONDS = 15 * 60;
 const REFRESH_COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
@@ -48,16 +47,14 @@ export class AuthController {
   private readonly isSecure: boolean;
 
   constructor(
-    @Inject(AuthService)
     private readonly authService: AuthService,
-    @Inject(ConfigService)
-    private configService: ConfigService,
+    private readonly configService: ConfigService,
   ) {
     this.isSecure =
       this.configService.getOrThrow<string>("NODE_ENV") === "production";
   }
 
-  private get baseCookieOptions() {
+  private get baseCookieOptions(): CookieOptions {
     return {
       path: "/",
       httpOnly: true,
@@ -67,22 +64,22 @@ export class AuthController {
   }
 
   private setAuthCookies(
-    reply: FastifyReply,
+    response: Response,
     tokens: { accessToken: string; refreshToken: string },
   ) {
-    reply.setCookie("access_token", tokens.accessToken, {
+    response.cookie("access_token", tokens.accessToken, {
       ...this.baseCookieOptions,
-      maxAge: ACCESS_COOKIE_MAX_AGE_SECONDS,
+      maxAge: ACCESS_COOKIE_MAX_AGE_SECONDS * 1000,
     });
-    reply.setCookie("refresh_token", tokens.refreshToken, {
+    response.cookie("refresh_token", tokens.refreshToken, {
       ...this.baseCookieOptions,
-      maxAge: REFRESH_COOKIE_MAX_AGE_SECONDS,
+      maxAge: REFRESH_COOKIE_MAX_AGE_SECONDS * 1000,
     });
   }
 
-  private clearAuthCookies(reply: FastifyReply) {
-    reply.clearCookie("access_token", this.baseCookieOptions);
-    reply.clearCookie("refresh_token", this.baseCookieOptions);
+  private clearAuthCookies(response: Response) {
+    response.clearCookie("access_token", this.baseCookieOptions);
+    response.clearCookie("refresh_token", this.baseCookieOptions);
   }
 
   @Post("login")
@@ -100,10 +97,13 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 200, description: "Login successful" })
-  async login(@Body() body: SignInBody, @Res() reply: FastifyReply) {
+  async login(
+    @Body() body: SignInBody,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const result = await this.authService.signIn(body);
-    this.setAuthCookies(reply, result);
-    return reply.send({ user: result.user });
+    this.setAuthCookies(response, result);
+    return { user: result.user };
   }
 
   @Post("register")
@@ -118,10 +118,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(verifyEmailBodySchema))
   @ApiOperation({ summary: "Verify email with OTP and start a session" })
-  async verifyEmail(@Body() body: VerifyEmailBody, @Res() reply: FastifyReply) {
+  async verifyEmail(
+    @Body() body: VerifyEmailBody,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const result = await this.authService.verifyEmail(body);
-    this.setAuthCookies(reply, result);
-    return reply.send({ user: result.user });
+    this.setAuthCookies(response, result);
+    return { user: result.user };
   }
 
   @Post("resend-verification")
@@ -146,32 +149,33 @@ export class AuthController {
   @ApiOperation({ summary: "Reset password using a recovery token" })
   async resetPassword(
     @Body() body: ResetPasswordBody,
-    @Res() reply: FastifyReply,
+    @Res({ passthrough: true }) response: Response,
   ) {
-    this.clearAuthCookies(reply);
-    return reply.send(await this.authService.resetPassword(body));
+    this.clearAuthCookies(response);
+    return this.authService.resetPassword(body);
   }
 
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Refresh access token" })
   @ApiResponse({ status: 200, description: "Token refreshed successfully" })
-  async refresh(@Req() req: FastifyRequest, @Res() reply: FastifyReply) {
-    const cookies = req.cookies as Record<string, string> | undefined;
-    const refreshToken = cookies?.["refresh_token"];
+  async refresh(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const refreshToken = request.cookies?.["refresh_token"];
     if (!refreshToken) {
-      this.clearAuthCookies(reply);
-      return reply
-        .code(HttpStatus.UNAUTHORIZED)
-        .send({ message: "No refresh token provided" });
+      this.clearAuthCookies(response);
+      response.status(HttpStatus.UNAUTHORIZED);
+      return { message: "No refresh token provided" };
     }
 
     try {
       const result = await this.authService.refreshSession(refreshToken);
-      this.setAuthCookies(reply, result);
-      return reply.send({ user: result.user });
+      this.setAuthCookies(response, result);
+      return { user: result.user };
     } catch (error) {
-      this.clearAuthCookies(reply);
+      this.clearAuthCookies(response);
       throw error;
     }
   }
@@ -184,10 +188,10 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "Logout successful" })
   async logout(
     @CurrentUser() user: AuthenticatedUser,
-    @Res() reply: FastifyReply,
+    @Res({ passthrough: true }) response: Response,
   ) {
     await this.authService.logout(user.id);
-    this.clearAuthCookies(reply);
-    return reply.send({ message: "Logged out successfully" });
+    this.clearAuthCookies(response);
+    return { message: "Logged out successfully" };
   }
 }

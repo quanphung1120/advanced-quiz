@@ -1,6 +1,6 @@
 # Advanced Quiz
 
-Local development targets the Fastify API in `apps/api-new`, the Vite/React app in `apps/web-new`, and a shared Drizzle workspace in `packages/db`.
+Local development targets the Fastify API in `apps/api-new`, the Vite/React app in `apps/web-new`, and a shared Prisma workspace in `packages/db`.
 
 ## Local Dev
 
@@ -24,9 +24,9 @@ pnpm install
 pnpm run dev
 ```
 
-`pnpm run dev` and `pnpm run dev:api` automatically run `db:push` for the shared database package before the API dev server starts, so your local schema is applied to the configured development database on each startup.
+Before the first API start against a fresh database, run a Prisma migration or schema push for `packages/db`.
 
-If you change the Drizzle schema and want to record a migration file in the repo, run:
+If you change the Prisma schema and want to record a migration file in the repo, run:
 
 ```sh
 pnpm run db:generate
@@ -38,7 +38,7 @@ This runs:
 - `@advanced-quiz/api` on `http://localhost:3001`
 - `@advanced-quiz/web` on `http://localhost:5173`
 
-Database scripts are managed in `packages/db` via Drizzle:
+Database scripts are managed in `packages/db` via Prisma:
 
 ```sh
 pnpm run db:generate

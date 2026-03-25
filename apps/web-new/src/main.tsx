@@ -2,9 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "./lib/query-client";
-import { ThemeProvider } from "./lib/theme-context";
-import { AppRoutes } from "./routes";
+import { queryClient } from "@/config/query-client";
+import { ThemeProvider } from "@/context/theme-provider";
+import { AppRoutes } from "@/pages/app-routes";
 import "./globals.css";
 
 createRoot(document.getElementById("root")!).render(

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { reviewsApi, type ReviewRating } from "../api/reviews-api";
+import { reviewsApi } from "../api/reviews-api";
+import type { ReviewRating } from "../types/review";
 
 export function useSrsSession(collectionId: string) {
   const queryClient = useQueryClient();

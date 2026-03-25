@@ -1,0 +1,22 @@
+{
+  "name": "@advanced-quiz/typescript-config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./base.json": "./base.json",
+    "./library.json": "./library.json",
+    "./nestjs.json": "./nestjs.json",
+    "./node-app.json": "./node-app.json",
+    "./node-tooling.json": "./node-tooling.json",
+    "./prisma.json": "./prisma.json",
+    "./react-app.json": "./react-app.json",
+    "./react-library.json": "./react-library.json"
+  },
+  "files": [
+    "*.json"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

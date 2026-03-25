@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
-import { CollectionsModule } from "../collections/collections.module";
-import { FlashcardsController } from "./flashcards.controller";
+import { CollectionsModule } from "../collections/collections.module.js";
+import { FlashcardsController } from "./flashcards.controller.js";
 
 @Module({
   imports: [CollectionsModule],

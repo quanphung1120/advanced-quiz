@@ -4,7 +4,7 @@ When writing complex features or significant refactors, use an ExecPlan (as desc
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-This monorepo uses Turborepo with `apps/*` and `packages/*` workspaces. Main applications live in `apps/api-new` (NestJS on Fastify) and `apps/web-new` (Vite + React). Shared code lives in `packages/config`, `packages/contracts`, and `packages/db`; keep cross-app types, config, and database logic there instead of duplicating them in app folders. Source files are under each workspace’s `src/`. Frontend static assets live in `apps/web-new/public`. Drizzle schema and migration artifacts live under `packages/db`.
+This monorepo uses Turborepo with `apps/*` and `packages/*` workspaces. Main applications live in `apps/api-new` (NestJS on Fastify) and `apps/web-new` (Vite + React). Shared code lives in `packages/contracts` and `packages/db`; keep cross-app types and database logic there instead of duplicating them in app folders. Runtime config should stay dedicated to each app under that app's `src/config` area. Source files are under each workspace’s `src/`. Frontend static assets live in `apps/web-new/public`. Drizzle schema and migration artifacts live under `packages/db`.
 
 ## Build, Test, and Development Commands
 Run commands from the repo root with `pnpm`.
@@ -21,7 +21,7 @@ Run commands from the repo root with `pnpm`.
 Use TypeScript with ES modules and 2-space indentation. Format with `pnpm run format` and follow the existing ESLint setup in `apps/web-new`. Prefer explicit imports. Use `PascalCase` for React components and types, `camelCase` for functions and variables, and `kebab-case` for file names such as `sign-in-page.tsx` or `auth.service.ts`.
 
 ## Testing Guidelines
-There is no dedicated automated test suite yet. Minimum verification for code changes is `pnpm run check-types`, `pnpm run lint`, and a manual smoke test of the affected API and web flows. When adding tests, place them near the source file using `*.test.ts` or `*.test.tsx`.
+There is no dedicated automated test suite yet. Minimum verification for code changes is `pnpm run check-types`, `pnpm run lint`, and a manual smoke test of the affected API and web flows. For significant UI, layout, routing, or cross-workspace workflow changes, also run the relevant development startup command from the repo root (`pnpm run dev`, or `pnpm run dev:web` / `pnpm run dev:api` when only one surface is affected) and confirm the affected app boots cleanly before closing the task. When adding tests, place them near the source file using `*.test.ts` or `*.test.tsx`.
 
 ## Commit & Pull Request Guidelines
 Use Conventional Commits, as in `feat(db): add quiz attempt schema` or `fix(web): handle expired session`. Keep commits focused. PRs should include a short summary, impacted workspaces, environment or migration notes, linked issues, and screenshots for UI changes.

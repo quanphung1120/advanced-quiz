@@ -1,25 +1,10 @@
-import { api } from "@/lib/api-client";
-
-export interface Flashcard {
-  id: string;
-  question: string;
-  answer: string;
-  type: string;
-  collectionId: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ListFlashcardsResponse {
-  flashcards: Flashcard[];
-  role: "owner" | "viewer" | "editor" | "admin";
-}
-
-export interface GetFlashcardResponse {
-  flashcard: Flashcard;
-  role: "owner" | "viewer" | "editor" | "admin";
-}
+import type { FlashcardType } from "@advanced-quiz/contracts";
+import { api } from "@/config/api-client";
+import type {
+  Flashcard,
+  GetFlashcardResponse,
+  ListFlashcardsResponse,
+} from "../types/flashcard";
 
 export const flashcardsApi = {
   list: async (collectionId: string) => {
@@ -38,7 +23,7 @@ export const flashcardsApi = {
     collectionId: string;
     question: string;
     answer: string;
-    type?: string;
+    type?: FlashcardType;
   }) => {
     const res = await api.post<{ flashcard: Flashcard }>(
       `/api/v1/collections/${data.collectionId}/flashcards`,
@@ -56,7 +41,7 @@ export const flashcardsApi = {
     data: {
       question?: string;
       answer?: string;
-      type?: string;
+      type?: FlashcardType;
     },
   ) => {
     const res = await api.put<{ flashcard: Flashcard }>(

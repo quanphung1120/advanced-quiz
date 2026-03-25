@@ -1,20 +1,18 @@
 {
+  "extends": "@advanced-quiz/typescript-config/library.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "types": ["node"],
-    "outDir": "./dist"
+    "rootDir": "./src",
+    "types": [
+      "node"
+    ],
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo/build.tsbuildinfo"
   },
-  "include": ["src", "drizzle.config.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

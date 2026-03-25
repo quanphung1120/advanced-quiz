@@ -1,6 +1,6 @@
 import { Library, Pencil, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import type { Flashcard } from "@/features/flashcards/api/flashcards-api";
+import { Button } from "@advanced-quiz/ui/components/button";
+import type { Flashcard } from "@/features/flashcards/types/flashcard";
 
 type FlashcardStackProps = {
   flashcards: Flashcard[];
@@ -34,7 +34,7 @@ export function FlashcardStack({
           </p>
         </div>
         {canEdit && (
-          <Button onClick={onCreate} size="md" className="gap-2">
+          <Button onClick={onCreate} className="gap-2">
             <Plus className="h-3.5 w-3.5" />
             Add First Card
           </Button>

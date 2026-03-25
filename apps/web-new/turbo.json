@@ -1,0 +1,30 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "env": [
+        "VITE_API_URL",
+        "VITE_CLOUDINARY_CLOUD_NAME"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env.production.local",
+        ".env.local",
+        ".env.production",
+        ".env",
+        "!dist/**",
+        "!.turbo/**",
+        "!node_modules/**",
+        "!coverage/**",
+        "!**/*.tsbuildinfo"
+      ]
+    },
+    "dev": {
+      "env": [
+        "VITE_API_URL",
+        "VITE_CLOUDINARY_CLOUD_NAME"
+      ]
+    }
+  }
+}

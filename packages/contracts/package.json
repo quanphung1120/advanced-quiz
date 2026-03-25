@@ -3,19 +3,31 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "./dist/**"
+  ],
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
-    "check-types": "tsc --noEmit"
+    "build": "tsc -b -v",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "format": "prettier --write . --ignore-unknown --ignore-path ../../.prettierignore",
+    "format:check": "prettier --check . --ignore-unknown --ignore-path ../../.prettierignore"
   },
   "dependencies": {
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@advanced-quiz/eslint-config": "workspace:*",
+    "@advanced-quiz/typescript-config": "workspace:*",
+    "eslint": "^9.39.1",
     "typescript": "^5.9.2"
   }
 }

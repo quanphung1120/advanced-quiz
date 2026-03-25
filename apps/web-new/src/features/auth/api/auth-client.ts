@@ -1,3 +1,5 @@
+import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
 import type {
   AuthMessageResponse,
   ForgotPasswordBody,
@@ -9,8 +11,7 @@ import type {
   SignUpBody,
   VerifyEmailBody,
 } from "@advanced-quiz/contracts";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api-client";
+import { api } from "@/config/api-client";
 
 type MutationError = {
   message: string;
@@ -182,8 +183,16 @@ export function useSession() {
       try {
         const response = await api.get<SessionResponse>("/api/v1/users/me");
         return response.data;
-      } catch {
-        return null;
+      } catch (queryError) {
+        if (
+          axios.isAxiosError(queryError) &&
+          (queryError.response?.status === 401 ||
+            queryError.response?.status === 403)
+        ) {
+          return null;
+        }
+
+        throw queryError;
       }
     },
     retry: false,

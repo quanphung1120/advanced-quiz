@@ -1,0 +1,24 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "dev": {
+      "env": [
+        "DATABASE_URL",
+        "AUTH_SECRET",
+        "API_URL",
+        "WEB_URL",
+        "CORS_ORIGIN",
+        "RESEND_API_KEY",
+        "RESEND_FROM_EMAIL",
+        "AI_GATEWAY_API_KEY",
+        "AI_PRIMARY_MODEL",
+        "AI_BACKGROUND_MODEL",
+        "ENABLE_AI_DEVTOOLS",
+        "PORT",
+        "LOG_LEVEL",
+        "ENABLE_DOCS"
+      ]
+    }
+  }
+}

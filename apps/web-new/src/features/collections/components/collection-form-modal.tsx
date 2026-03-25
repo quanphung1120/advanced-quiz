@@ -1,15 +1,51 @@
-import { useState } from "react";
-import { Modal } from "@/components/ui/modal";
-import { Button } from "@/components/ui/button";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@advanced-quiz/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@advanced-quiz/ui/components/dialog";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@advanced-quiz/ui/components/field";
+import { Input } from "@advanced-quiz/ui/components/input";
+import { Switch } from "@advanced-quiz/ui/components/switch";
+import { Textarea } from "@advanced-quiz/ui/components/textarea";
 
 type CollectionValues = {
   name: string;
   description?: string;
   isPublic?: boolean;
 };
+
+const collectionFormSchema = z.object({
+  name: z.string().trim().min(1, "Collection title is required"),
+  description: z.string(),
+  isPublic: z.boolean(),
+});
+
+type CollectionFormValues = z.infer<typeof collectionFormSchema>;
+
+function getDefaultValues(
+  initialValues?: CollectionValues,
+): CollectionFormValues {
+  return {
+    name: initialValues?.name ?? "",
+    description: initialValues?.description ?? "",
+    isPublic: initialValues?.isPublic ?? false,
+  };
+}
 
 type CollectionFormModalProps = {
   open: boolean;
@@ -32,101 +68,143 @@ export function CollectionFormModal({
   initialValues,
   onSubmit,
 }: CollectionFormModalProps) {
-  const [name, setName] = useState(initialValues?.name ?? "");
-  const [details, setDetails] = useState(initialValues?.description ?? "");
-  const [isPublic, setIsPublic] = useState(initialValues?.isPublic ?? false);
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CollectionFormValues>({
+    resolver: zodResolver(collectionFormSchema),
+    defaultValues: getDefaultValues(initialValues),
+  });
+
+  useEffect(() => {
+    reset(getDefaultValues(initialValues));
+  }, [initialValues, open, reset]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      reset(getDefaultValues(initialValues));
+    }
+    onOpenChange(nextOpen);
+  };
 
   return (
-    <Modal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={title}
-      description={description}
-    >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-lg gap-0 p-0 sm:max-w-lg">
       <form
-        className="space-y-6"
-        onSubmit={async (event) => {
-          event.preventDefault();
+        className="flex flex-col"
+        onSubmit={handleSubmit(async (values) => {
           await onSubmit({
-            name,
-            description: details.trim() || undefined,
-            isPublic,
+            name: values.name,
+            description: values.description.trim() || undefined,
+            isPublic: values.isPublic,
           });
-        }}
+        })}
       >
-        <Field>
-          <FieldLabel
-            htmlFor="collection-name"
-            className="ml-1 text-[10px] tracking-[0.2em]"
-          >
-            Collection Title
-          </FieldLabel>
-          <Input
-            id="collection-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. Molecular Biology II"
-            required
-            className="py-3 font-medium"
-          />
-        </Field>
+        <div className="flex flex-col gap-6 p-6 sm:p-8">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="font-display text-2xl font-bold tracking-tight">
+              {title}
+            </DialogTitle>
+            <DialogDescription className="max-w-xl text-sm leading-6">
+              {description}
+            </DialogDescription>
+          </DialogHeader>
 
-        <Field className="space-y-1.5">
-          <FieldLabel
-            htmlFor="collection-description"
-            className="ml-1 text-[10px] tracking-[0.2em]"
-          >
-            Detailed Description
-          </FieldLabel>
-          <Textarea
-            id="collection-description"
-            value={details}
-            onChange={(event) => setDetails(event.target.value)}
-            rows={4}
-            placeholder="What knowledge gaps does this deck bridge?"
-            className="font-medium"
-          />
-        </Field>
+          <FieldGroup>
+            <Field data-invalid={errors.name ? true : undefined}>
+              <FieldLabel
+                htmlFor="collection-name"
+                className="text-[10px] uppercase tracking-[0.2em]"
+              >
+                Collection Title
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  id="collection-name"
+                  placeholder="e.g. Molecular Biology II"
+                  aria-invalid={errors.name ? true : undefined}
+                  className="h-11 font-medium"
+                  {...register("name")}
+                />
+                <FieldError errors={errors.name ? [errors.name] : undefined} />
+              </FieldContent>
+            </Field>
 
-        <div className="p-4 rounded-lg border border-border bg-muted/25 space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-y-1">
-              <p className="text-sm font-bold">Public Accessibility</p>
-              <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-                Allow other workspace members to discover and study this
-                collection.
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={isPublic}
-                onChange={(event) => setIsPublic(event.target.checked)}
-                className="sr-only peer"
+            <Field data-invalid={errors.description ? true : undefined}>
+              <FieldLabel
+                htmlFor="collection-description"
+                className="text-[10px] uppercase tracking-[0.2em]"
+              >
+                Detailed Description
+              </FieldLabel>
+              <FieldContent>
+                <Textarea
+                  id="collection-description"
+                  rows={4}
+                  placeholder="What knowledge gaps does this deck bridge?"
+                  aria-invalid={errors.description ? true : undefined}
+                  className="font-medium"
+                  {...register("description")}
+                />
+                <FieldError
+                  errors={errors.description ? [errors.description] : undefined}
+                />
+              </FieldContent>
+            </Field>
+
+            <Field
+              orientation="horizontal"
+              className="rounded-none border border-border bg-muted/25 p-4"
+            >
+              <FieldContent className="gap-1">
+                <FieldLabel
+                  htmlFor="collection-visibility"
+                  className="text-sm font-bold normal-case tracking-normal text-foreground"
+                >
+                  Public Accessibility
+                </FieldLabel>
+                <FieldDescription className="text-xs font-medium leading-relaxed">
+                  Allow other workspace members to discover and study this
+                  collection.
+                </FieldDescription>
+              </FieldContent>
+              <Controller
+                control={control}
+                name="isPublic"
+                render={({ field }) => (
+                  <Switch
+                    id="collection-visibility"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
               />
-              <div className="w-11 h-6 bg-muted border border-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-foreground after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background peer-checked:after:bg-foreground after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary transition-colors group-hover:border-primary/40"></div>
-            </label>
-          </div>
+            </Field>
+          </FieldGroup>
         </div>
 
-        <div className="flex flex-wrap justify-end gap-3 pt-2">
+        <DialogFooter className="border-t border-border/60 px-6 py-4 sm:px-8">
           <Button
             type="button"
             variant="ghost"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             className="font-bold"
           >
             Discard
           </Button>
           <Button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || isSubmitting}
             className="px-8 shadow-[0_8px_24px_oklch(0.52_0.26_258_/_0.2)]"
           >
             {isPending ? "Syncing..." : submitLabel}
           </Button>
-        </div>
+        </DialogFooter>
       </form>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }

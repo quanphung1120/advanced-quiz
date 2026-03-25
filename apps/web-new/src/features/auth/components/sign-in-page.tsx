@@ -4,10 +4,19 @@ import { startTransition, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
 import { signInBodySchema, type SignInBody } from "@advanced-quiz/contracts";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import {
+  Alert,
+  AlertDescription,
+} from "@advanced-quiz/ui/components/alert";
+import { Button } from "@advanced-quiz/ui/components/button";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@advanced-quiz/ui/components/field";
+import { Input } from "@advanced-quiz/ui/components/input";
 import { resendVerification, signIn } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
 
@@ -115,84 +124,93 @@ export function SignInPage() {
       footerActionLabel="Create one"
       footerActionTo="/sign-up"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {error && (
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+        {error ? (
           <Alert variant="destructive">
-            <p>{error}</p>
-            {showVerificationActions && (
+            <AlertDescription>{error}</AlertDescription>
+            {showVerificationActions ? (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Link
                   to={`/verify-email?email=${encodeURIComponent(emailValue ?? "")}`}
-                  className="text-sm font-semibold text-foreground transition-colors hover:text-primary"
+                  className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
                 >
                   Enter verification code
                 </Link>
-                <button
+                <Button
                   type="button"
                   onClick={handleResendVerification}
                   disabled={resendState.loading}
-                  className="text-sm font-semibold text-primary transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:text-muted-foreground"
+                  variant="link"
+                  className="h-auto px-0"
                 >
                   {resendState.loading ? "Resending…" : "Resend code"}
-                </button>
+                </Button>
               </div>
-            )}
+            ) : null}
           </Alert>
-        )}
+        ) : null}
 
-        {resendState.message && (
-          <Alert variant="success">{resendState.message}</Alert>
-        )}
+        {resendState.message ? (
+          <Alert>
+            <AlertDescription>{resendState.message}</AlertDescription>
+          </Alert>
+        ) : null}
 
-        {resendState.error && (
-          <Alert variant="destructive">{resendState.error}</Alert>
-        )}
+        {resendState.error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{resendState.error}</AlertDescription>
+          </Alert>
+        ) : null}
 
-        <Field>
-          <FieldLabel htmlFor="email">
-            Email
-          </FieldLabel>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="name@example.com"
-            {...register("email")}
-            className="rounded-none text-base focus:bg-background"
-          />
-          {errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
-        </Field>
+        <FieldGroup>
+          <Field data-invalid={errors.email ? true : undefined}>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <FieldContent>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="name@example.com"
+                aria-invalid={errors.email ? true : undefined}
+                {...register("email")}
+                className="h-12 bg-background px-4 text-base"
+              />
+              <FieldError errors={errors.email ? [errors.email] : undefined} />
+            </FieldContent>
+          </Field>
 
-        <Field>
-          <div className="flex items-center justify-between">
-            <FieldLabel htmlFor="password">
-              Password
-            </FieldLabel>
-            <Link
-              to="/forgot-password"
-              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
-            >
-              Forgot?
-            </Link>
-          </div>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            {...register("password")}
-            className="rounded-none text-base focus:bg-background"
-          />
-          {errors.password ? (
-            <FieldError>{errors.password.message}</FieldError>
-          ) : null}
-        </Field>
+          <Field data-invalid={errors.password ? true : undefined}>
+            <div className="flex items-center justify-between gap-3">
+              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <Link
+                to="/forgot-password"
+                className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
+              >
+                Forgot?
+              </Link>
+            </div>
+            <FieldContent>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                aria-invalid={errors.password ? true : undefined}
+                {...register("password")}
+                className="h-12 bg-background px-4 text-base"
+              />
+              <FieldError
+                errors={errors.password ? [errors.password] : undefined}
+              />
+            </FieldContent>
+          </Field>
+        </FieldGroup>
 
         <Button
           type="submit"
           disabled={loading}
           size="lg"
-          className="h-12 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
+          className="h-12 w-full text-base font-bold"
         >
           {loading ? "Signing in…" : "Sign in"}
         </Button>

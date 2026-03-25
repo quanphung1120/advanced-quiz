@@ -1,0 +1,6 @@
+{
+  "extends": "@advanced-quiz/typescript-config/base.json",
+  "compilerOptions": {
+    "strictNullChecks": true
+  }
+}

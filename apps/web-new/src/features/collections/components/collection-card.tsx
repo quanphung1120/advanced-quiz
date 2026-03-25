@@ -1,62 +1,75 @@
 import { Link } from "react-router";
-import {
-  ArrowRight,
-  Clock3,
-  Globe2,
-  LockKeyhole,
-  Sparkles,
-} from "lucide-react";
-import type { Collection } from "@/features/collections/api/collections-api";
+import { ArrowUpRight, Globe2, LockKeyhole } from "lucide-react";
+import { Badge } from "@advanced-quiz/ui/components/badge";
+import type { Collection } from "@/features/collections/types/collection";
 
 type CollectionCardProps = {
   collection: Collection;
+  scope?: "owned" | "shared";
+  isLast?: boolean;
 };
 
-export function CollectionCard({ collection }: CollectionCardProps) {
+function formatShortDate(dateString: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(dateString));
+}
+
+export function CollectionCard({
+  collection,
+  scope = "owned",
+  isLast = false,
+}: CollectionCardProps) {
   return (
     <Link
       to={`/dashboard/collections/${collection.id}`}
-      className="group flex h-full flex-col rounded-sm border-2 border-border bg-muted p-5 transition-colors hover:border-foreground/30"
+      className="group block"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-primary/10 text-primary border border-primary/20">
-          <Sparkles className="h-4.5 w-4.5" />
-        </div>
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          {collection.isPublic ? (
-            <Globe2 className="h-3 w-3" />
-          ) : (
-            <LockKeyhole className="h-3 w-3" />
-          )}
-          {collection.isPublic ? "Public" : "Private"}
-        </span>
-      </div>
-
-      <div className="mt-6 space-y-2">
-        <h4 className="font-display text-xl font-bold tracking-tight text-foreground">
-          {collection.name}
-        </h4>
-        <p className="line-clamp-2 min-h-[2.5rem] text-sm leading-relaxed text-muted-foreground/80">
-          {collection.description ||
-            "No description yet. Open the detail page to shape this deck."}
-        </p>
-      </div>
-
-      <div className="mt-auto pt-5">
-        <div className="flex items-center justify-between border-t border-border/60 pt-4">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-            <Clock3 className="h-3.5 w-3.5" />
-            {new Date(collection.updatedAt).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-            })}
+      <article
+        className={`grid gap-4 px-4 py-4 transition-colors group-hover:bg-muted/20 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-5 ${
+          isLast ? "" : "border-b border-border"
+        }`}
+      >
+        <div className="min-w-0 space-y-3">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline">{scope}</Badge>
+            <Badge variant={collection.isPublic ? "secondary" : "outline"}>
+              {collection.isPublic ? (
+                <Globe2 data-icon="inline-start" />
+              ) : (
+                <LockKeyhole data-icon="inline-start" />
+              )}
+              {collection.isPublic ? "Public" : "Private"}
+            </Badge>
           </div>
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-foreground">
+
+          <div className="space-y-1">
+            <h3 className="truncate text-sm font-medium text-foreground">
+              {collection.name}
+            </h3>
+            <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+              {collection.description ||
+                "No description yet. Open the collection to add structure and study context."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-4 sm:justify-end">
+          <div className="text-left sm:text-right">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Updated
+            </p>
+            <p className="mt-1 text-sm font-medium text-foreground">
+              {formatShortDate(collection.updatedAt)}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 text-foreground transition-transform group-hover:translate-x-0.5">
             Open
-            <ArrowRight className="h-3.5 w-3.5" />
-          </div>
+            <ArrowUpRight />
+          </span>
         </div>
-      </div>
+      </article>
     </Link>
   );
 }

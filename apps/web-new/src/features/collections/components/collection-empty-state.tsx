@@ -1,46 +1,53 @@
 import { Layers3, Plus, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@advanced-quiz/ui/components/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@advanced-quiz/ui/components/empty";
 
 type CollectionEmptyStateProps = {
   hasSearch: boolean;
   onCreate: () => void;
+  compact?: boolean;
 };
 
 export function CollectionEmptyState({
   hasSearch,
   onCreate,
+  compact = false,
 }: CollectionEmptyStateProps) {
   return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 px-6 py-20 text-center">
-      <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary shadow-[0_0_40px_oklch(0.52_0.26_258_/_0.15)]">
-        {hasSearch ? (
-          <Search className="h-8 w-8" />
-        ) : (
-          <Layers3 className="h-8 w-8" />
-        )}
-      </div>
-
-      <div className="mt-8 space-y-3 max-w-sm">
-        <h3 className="font-display text-3xl font-black tracking-tight text-foreground">
-          {hasSearch ? "No matches found" : "Collection empty"}
-        </h3>
-        <p className="text-sm leading-7 text-muted-foreground font-medium">
+    <Empty
+      className={`border border-dashed border-border bg-card/50 ${
+        compact ? "min-h-[240px] py-10" : "min-h-[400px] py-16"
+      }`}
+    >
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          {hasSearch ? <Search /> : <Layers3 />}
+        </EmptyMedia>
+        <EmptyTitle>
+          {hasSearch ? "No matching collections" : "No collections yet"}
+        </EmptyTitle>
+        <EmptyDescription>
           {hasSearch
-            ? "We couldn't find any collections matching your criteria. Try adjusting your search query."
-            : "You haven't created any study collections yet. Start by building your first knowledge deck."}
-        </p>
-      </div>
+            ? "Try a broader query or switch ownership filters to surface more results."
+            : "Create your first collection to start organising decks, collaborators, and study sessions from one workspace."}
+        </EmptyDescription>
+      </EmptyHeader>
 
-      {!hasSearch && (
-        <Button
-          onClick={onCreate}
-          size="lg"
-          className="mt-10 gap-2 shadow-[0_8px_32px_oklch(0.52_0.26_258_/_0.2)]"
-        >
-          <Plus className="h-4 w-4" />
-          Create Collection
-        </Button>
-      )}
-    </div>
+      {!hasSearch ? (
+        <EmptyContent>
+          <Button onClick={onCreate}>
+            <Plus data-icon="inline-start" />
+            Create collection
+          </Button>
+        </EmptyContent>
+      ) : null}
+    </Empty>
   );
 }

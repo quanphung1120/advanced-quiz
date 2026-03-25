@@ -1,51 +1,49 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import type { Prisma } from "@advanced-quiz/db";
 import * as bcrypt from "bcrypt";
-import { and, asc, eq, gt, ilike, ne } from "drizzle-orm";
-import { type DatabaseClient, refreshTokens, users } from "@advanced-quiz/db";
-import { DATABASE } from "../database/database.service";
+import { DatabaseService } from "../database/database.service.js";
 
 const PASSWORD_SALT_ROUNDS = 12;
 const REFRESH_TOKEN_TTL_DAYS = 7;
 
 const USER_PUBLIC_SELECT = {
-  id: users.id,
-  name: users.name,
-  email: users.email,
-  emailVerified: users.emailVerified,
-  emailVerifiedAt: users.emailVerifiedAt,
-  passwordChangedAt: users.passwordChangedAt,
-  createdAt: users.createdAt,
-  updatedAt: users.updatedAt,
-} as const;
+  id: true,
+  name: true,
+  email: true,
+  emailVerified: true,
+  emailVerifiedAt: true,
+  passwordChangedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.UserSelect;
 
 @Injectable()
 export class UsersService {
-  constructor(@Inject(DATABASE) private readonly database: DatabaseClient) {}
+  constructor(private readonly databaseService: DatabaseService) {}
+
+  private get database() {
+    return this.databaseService.database;
+  }
 
   async findByEmail(email: string) {
-    const [user] = await this.database
-      .select(USER_PUBLIC_SELECT)
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
-    return user ?? null;
+    return this.database.user.findUnique({
+      where: { email },
+      select: USER_PUBLIC_SELECT,
+    });
   }
 
   /** Returns the full user row including hashed password — only for auth use. */
   async findByEmailWithPassword(email: string) {
-    return this.database.query.users.findFirst({
-      where: eq(users.email, email),
+    return this.database.user.findUnique({
+      where: { email },
     });
   }
 
   async findById(id: string) {
-    const [user] = await this.database
-      .select(USER_PUBLIC_SELECT)
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1);
-    return user ?? null;
+    return this.database.user.findUnique({
+      where: { id },
+      select: USER_PUBLIC_SELECT,
+    });
   }
 
   async create(data: { email: string; name: string; password?: string }) {
@@ -53,16 +51,19 @@ export class UsersService {
       ? await bcrypt.hash(data.password, PASSWORD_SALT_ROUNDS)
       : undefined;
 
-    const [createdUser] = await this.database
-      .insert(users)
-      .values({
-        id: randomUUID(),
+    const createdUser = await this.database.user.create({
+      data: {
         email: data.email,
         name: data.name,
         password: hashedPassword ?? "",
         emailVerified: false,
-      })
-      .returning(USER_PUBLIC_SELECT);
+      },
+      select: USER_PUBLIC_SELECT,
+    });
+
+    if (!createdUser) {
+      throw new InternalServerErrorException("Unable to create user");
+    }
 
     return createdUser;
   }
@@ -73,33 +74,33 @@ export class UsersService {
     expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_TTL_DAYS);
 
     // Replace all existing tokens to prevent unbounded accumulation.
-    await this.database
-      .delete(refreshTokens)
-      .where(eq(refreshTokens.userId, userId));
-    await this.database.insert(refreshTokens).values({
-      id: randomUUID(),
-      token: hashedToken,
-      userId,
-      expiresAt,
+    await this.database.refreshToken.deleteMany({
+      where: { userId },
+    });
+    await this.database.refreshToken.create({
+      data: {
+        token: hashedToken,
+        userId,
+        expiresAt,
+      },
     });
   }
 
   async deleteAllRefreshTokens(userId: string) {
-    await this.database
-      .delete(refreshTokens)
-      .where(eq(refreshTokens.userId, userId));
+    await this.database.refreshToken.deleteMany({
+      where: { userId },
+    });
   }
 
   async validateRefreshToken(userId: string, refreshToken: string) {
-    const tokens = await this.database
-      .select()
-      .from(refreshTokens)
-      .where(
-        and(
-          eq(refreshTokens.userId, userId),
-          gt(refreshTokens.expiresAt, new Date()),
-        ),
-      );
+    const tokens = await this.database.refreshToken.findMany({
+      where: {
+        userId,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+    });
 
     for (const token of tokens) {
       const isMatch = await bcrypt.compare(refreshToken, token.token);
@@ -107,13 +108,14 @@ export class UsersService {
         return token;
       }
     }
+
     return null;
   }
 
   async deleteRefreshToken(tokenId: string) {
-    await this.database
-      .delete(refreshTokens)
-      .where(eq(refreshTokens.id, tokenId));
+    await this.database.refreshToken.deleteMany({
+      where: { id: tokenId },
+    });
   }
 
   async searchUserEmails(query: string, currentUserId: string) {
@@ -121,12 +123,24 @@ export class UsersService {
       return [];
     }
 
-    const rows = await this.database
-      .select({ email: users.email })
-      .from(users)
-      .where(and(ilike(users.email, `%${query}%`), ne(users.id, currentUserId)))
-      .orderBy(asc(users.email))
-      .limit(10);
+    const rows = await this.database.user.findMany({
+      where: {
+        email: {
+          contains: query,
+          mode: "insensitive",
+        },
+        NOT: {
+          id: currentUserId,
+        },
+      },
+      orderBy: {
+        email: "asc",
+      },
+      take: 10,
+      select: {
+        email: true,
+      },
+    });
 
     return rows.map((user) => user.email);
   }

@@ -1,8 +1,8 @@
 import type { SessionUser } from "@advanced-quiz/contracts";
-import type { FastifyRequest } from "fastify";
+import type { Request } from "express";
 
 export type AuthenticatedUser = SessionUser;
 
-export interface AuthenticatedRequest extends FastifyRequest {
+export interface AuthenticatedRequest extends Request {
   user: AuthenticatedUser;
 }

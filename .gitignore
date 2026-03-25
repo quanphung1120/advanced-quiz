@@ -26,7 +26,11 @@ coverage
 out/
 build
 dist
-packages/db/generated
+*.tsbuildinfo
+packages/db/src/generated
+packages/db/src/client.js
+packages/db/src/index.js
+packages/db/prisma.config.js
 
 
 # Debug
@@ -42,3 +46,4 @@ tmp/
  .air-tmp/
 apps/api/tmp/
 apps/api/.air-tmp/
+.devtools

@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 type SendEmailArgs = {
@@ -15,9 +15,10 @@ export class AuthMailerService {
   private readonly resendApiKey: string;
   private readonly resendFromEmail: string;
 
-  constructor(@Inject(ConfigService) private configService: ConfigService) {
-    this.resendApiKey = this.configService.getOrThrow<string>("RESEND_API_KEY");
-    this.resendFromEmail = this.configService.getOrThrow<string>("RESEND_FROM_EMAIL");
+  constructor(configService: ConfigService) {
+    this.resendApiKey = configService.getOrThrow<string>("RESEND_API_KEY");
+    this.resendFromEmail =
+      configService.getOrThrow<string>("RESEND_FROM_EMAIL");
   }
 
   async sendVerificationOtp(args: {

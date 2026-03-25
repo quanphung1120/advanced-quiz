@@ -1,27 +1,39 @@
 import type { CollaboratorRole, ReviewStatus } from "@advanced-quiz/contracts";
-import type {
-  Collection,
-  CollectionCollaborator,
-  Flashcard,
-  FlashcardReview,
-  User,
-} from "@advanced-quiz/db";
+import type { Prisma } from "@advanced-quiz/db";
 
 export function toIsoString(value: Date | null): string | null {
   return value ? value.toISOString() : null;
 }
 
-type CollaboratorWithUser = CollectionCollaborator & {
-  user: Pick<User, "email">;
-};
+type CollaboratorWithUser = Prisma.CollectionCollaboratorGetPayload<{
+  include: {
+    user: {
+      select: {
+        email: true;
+      };
+    };
+  };
+}>;
 
-type CollectionWithCollaborators = Collection & {
-  collaborators: CollaboratorWithUser[];
-};
+type CollectionWithCollaborators = Prisma.CollectionGetPayload<{
+  include: {
+    collaborators: {
+      include: {
+        user: {
+          select: {
+            email: true;
+          };
+        };
+      };
+    };
+  };
+}>;
 
-type ReviewWithFlashcard = FlashcardReview & {
-  flashcard: Flashcard;
-};
+type ReviewWithFlashcard = Prisma.FlashcardReviewGetPayload<{
+  include: {
+    flashcard: true;
+  };
+}>;
 
 export function serializeCollaborator(collaborator: CollaboratorWithUser) {
   return {
@@ -47,7 +59,9 @@ export function serializeCollection(collection: CollectionWithCollaborators) {
   };
 }
 
-export function serializeFlashcard(flashcard: Flashcard) {
+export function serializeFlashcard(
+  flashcard: Prisma.FlashcardGetPayload<object>,
+) {
   return {
     id: flashcard.id,
     question: flashcard.question,

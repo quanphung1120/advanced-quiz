@@ -1,15 +1,24 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { startTransition, useMemo, useState } from "react";
+import { startTransition, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useForm, useWatch } from "react-hook-form";
 import {
   resetPasswordBodySchema,
   type ResetPasswordBody,
 } from "@advanced-quiz/contracts";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import {
+  Alert,
+  AlertDescription,
+} from "@advanced-quiz/ui/components/alert";
+import { Button } from "@advanced-quiz/ui/components/button";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@advanced-quiz/ui/components/field";
+import { Input } from "@advanced-quiz/ui/components/input";
 import { resetPassword } from "@/features/auth/api/auth-client";
 import { AuthPageShell } from "./auth-page-shell";
 import { PasswordRequirements } from "./password-requirements";
@@ -21,10 +30,7 @@ export function ResetPasswordPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const token = useMemo(
-    () => searchParams.get("token")?.trim() ?? "",
-    [searchParams],
-  );
+  const token = searchParams.get("token")?.trim() ?? "";
 
   const {
     register,
@@ -82,61 +88,77 @@ export function ResetPasswordPage() {
       footerActionLabel="Sign in"
       footerActionTo="/sign-in"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
         <input type="hidden" {...register("token")} value={token} />
 
-        {!token && (
+        {!token ? (
           <Alert variant="destructive">
-            This reset link is missing its token. Request a fresh recovery
-            email.
+            <AlertDescription>
+              This reset link is missing its token. Request a fresh recovery
+              email.
+            </AlertDescription>
           </Alert>
-        )}
+        ) : null}
 
-        {error ? <Alert variant="destructive">{error}</Alert> : null}
-        {success ? <Alert variant="success">{success}</Alert> : null}
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+        {success ? (
+          <Alert>
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        ) : null}
 
-        <Field>
-          <FieldLabel htmlFor="password">
-            New password
-          </FieldLabel>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            placeholder="Create a strong password"
-            {...register("password", { required: "Password is required" })}
-            className="rounded-none text-base focus:bg-background"
-          />
-          {errors.password ? (
-            <FieldError>{errors.password.message}</FieldError>
-          ) : null}
-          <PasswordRequirements password={passwordValue} />
-        </Field>
+        <FieldGroup>
+          <Field data-invalid={errors.password ? true : undefined}>
+            <FieldLabel htmlFor="password">New password</FieldLabel>
+            <FieldContent>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Create a strong password"
+                aria-invalid={errors.password ? true : undefined}
+                {...register("password", { required: "Password is required" })}
+                className="h-12 bg-background px-4 text-base"
+              />
+              <FieldError
+                errors={errors.password ? [errors.password] : undefined}
+              />
+              <PasswordRequirements password={passwordValue} />
+            </FieldContent>
+          </Field>
 
-        <Field>
-          <FieldLabel htmlFor="confirmPassword">
-            Confirm password
-          </FieldLabel>
-          <Input
-            id="confirmPassword"
-            type="password"
-            autoComplete="new-password"
-            placeholder="Re-enter your new password"
-            {...register("confirmPassword", {
-              required: "Please confirm your password",
-            })}
-            className="rounded-none text-base focus:bg-background"
-          />
-          {errors.confirmPassword ? (
-            <FieldError>{errors.confirmPassword.message}</FieldError>
-          ) : null}
-        </Field>
+          <Field data-invalid={errors.confirmPassword ? true : undefined}>
+            <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
+            <FieldContent>
+              <Input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Re-enter your new password"
+                aria-invalid={errors.confirmPassword ? true : undefined}
+                {...register("confirmPassword", {
+                  required: "Please confirm your password",
+                })}
+                className="h-12 bg-background px-4 text-base"
+              />
+              <FieldError
+                errors={
+                  errors.confirmPassword ? [errors.confirmPassword] : undefined
+                }
+              />
+            </FieldContent>
+          </Field>
+        </FieldGroup>
 
         <Button
           type="submit"
           disabled={loading || !token}
           size="lg"
-          className="h-12 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
+          className="h-12 w-full text-base font-bold"
         >
           {loading ? "Updating password…" : "Update password"}
         </Button>

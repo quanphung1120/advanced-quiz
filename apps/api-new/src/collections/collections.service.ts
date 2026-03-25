@@ -1,63 +1,71 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import type { CollectionRole, ReviewRating } from "@advanced-quiz/contracts";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import {
-  collectionCollaborators,
-  collections,
-  type DatabaseClient,
-  flashcardReviews,
-  flashcards,
-  users,
-} from "@advanced-quiz/db";
-import { DATABASE } from "../database/database.service";
-import { buildCollectionStats, calculateNextReview } from "../lib/srs";
+import type { Prisma } from "@advanced-quiz/db";
+import { DatabaseService } from "../database/database.service.js";
 import {
   type CollectionAccessRecord,
   serializeCollection,
   serializeCollaborator,
   serializeFlashcard,
   serializeReviewProgress,
-} from "../common/serialization";
+} from "../common/serialization.js";
+import { buildCollectionStats, calculateNextReview } from "../lib/srs.js";
+
+const COLLABORATOR_INCLUDE = {
+  user: {
+    select: {
+      email: true,
+    },
+  },
+} satisfies Prisma.CollectionCollaboratorInclude;
+
+const COLLECTION_WITH_COLLABORATORS_INCLUDE = {
+  collaborators: {
+    include: COLLABORATOR_INCLUDE,
+    orderBy: {
+      createdAt: "asc",
+    },
+  },
+} satisfies Prisma.CollectionInclude;
 
 @Injectable()
 export class CollectionsService {
-  constructor(@Inject(DATABASE) private readonly database: DatabaseClient) {}
+  constructor(private readonly databaseService: DatabaseService) {}
+
+  private get database() {
+    return this.databaseService.database;
+  }
 
   async listCollectionsForUser(userId: string) {
     const [ownedCollections, sharedLinks] = await Promise.all([
-      this.database.query.collections.findMany({
-        where: eq(collections.ownerId, userId),
-        orderBy: (table, { desc }) => [desc(table.updatedAt)],
-        with: {
-          collaborators: {
-            with: { user: true },
-            orderBy: (table, { asc }) => [asc(table.createdAt)],
-          },
-        },
+      this.database.collection.findMany({
+        where: { ownerId: userId },
+        orderBy: { updatedAt: "desc" },
+        include: COLLECTION_WITH_COLLABORATORS_INCLUDE,
       }),
-      this.database.query.collectionCollaborators.findMany({
-        where: eq(collectionCollaborators.userId, userId),
-        with: { collection: true },
-        orderBy: (table, { desc }) => [desc(table.createdAt)],
+      this.database.collectionCollaborator.findMany({
+        where: { userId },
+        include: { collection: true },
+        orderBy: { createdAt: "desc" },
       }),
     ]);
 
     const sharedCollectionIds = sharedLinks.map((item) => item.collection.id);
     const collaborators =
       sharedCollectionIds.length > 0
-        ? await this.database.query.collectionCollaborators.findMany({
-            where: inArray(
-              collectionCollaborators.collectionId,
-              sharedCollectionIds,
-            ),
-            with: { user: true },
-            orderBy: (table, { asc }) => [asc(table.createdAt)],
+        ? await this.database.collectionCollaborator.findMany({
+            where: {
+              collectionId: {
+                in: sharedCollectionIds,
+              },
+            },
+            include: COLLABORATOR_INCLUDE,
+            orderBy: { createdAt: "asc" },
           })
         : [];
 
@@ -84,24 +92,17 @@ export class CollectionsService {
     userId: string,
     data: { name: string; description?: string; isPublic?: boolean },
   ) {
-    const [collection] = await this.database
-      .insert(collections)
-      .values({
+    const collection = await this.database.collection.create({
+      data: {
         name: data.name,
         description: data.description ?? null,
         isPublic: data.isPublic ?? false,
         ownerId: userId,
-      })
-      .returning();
-
-    if (!collection) {
-      throw new BadRequestException("Unable to create collection");
-    }
-
-    return serializeCollection({
-      ...collection,
-      collaborators: [],
+      },
+      include: COLLECTION_WITH_COLLABORATORS_INCLUDE,
     });
+
+    return serializeCollection(collection);
   }
 
   async getCollection(collectionId: string, userId: string) {
@@ -123,11 +124,9 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    const now = new Date();
-
-    await this.database
-      .update(collections)
-      .set({
+    const updated = await this.database.collection.update({
+      where: { id: collectionId },
+      data: {
         name: data.name ?? access.collection.name,
         description:
           data.description !== undefined
@@ -137,16 +136,11 @@ export class CollectionsService {
           data.isPublic !== undefined
             ? data.isPublic
             : access.collection.isPublic,
-        updatedAt: now,
-      })
-      .where(eq(collections.id, collectionId));
+      },
+      include: COLLECTION_WITH_COLLABORATORS_INCLUDE,
+    });
 
-    const refreshedAccess = await this.getCollectionAccess(
-      collectionId,
-      userId,
-    );
-
-    return serializeCollection(refreshedAccess.collection);
+    return serializeCollection(updated);
   }
 
   async deleteCollection(collectionId: string, userId: string) {
@@ -156,9 +150,9 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    await this.database
-      .delete(collections)
-      .where(eq(collections.id, collectionId));
+    await this.database.collection.delete({
+      where: { id: collectionId },
+    });
 
     return { message: "Collection deleted successfully" };
   }
@@ -174,8 +168,12 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    const targetUser = await this.database.query.users.findFirst({
-      where: eq(users.email, data.email),
+    const targetUser = await this.database.user.findUnique({
+      where: { email: data.email },
+      select: {
+        id: true,
+        email: true,
+      },
     });
 
     if (!targetUser) {
@@ -194,24 +192,17 @@ export class CollectionsService {
       throw new BadRequestException("User is already a collaborator");
     }
 
-    const [collaborator] = await this.database
-      .insert(collectionCollaborators)
-      .values({
+    const collaborator = await this.database.collectionCollaborator.create({
+      data: {
         collectionId,
         userId: targetUser.id,
         role: data.role,
-      })
-      .returning();
-
-    if (!collaborator) {
-      throw new BadRequestException("Unable to add collaborator");
-    }
+      },
+      include: COLLABORATOR_INCLUDE,
+    });
 
     return {
-      collaborator: serializeCollaborator({
-        ...collaborator,
-        user: targetUser,
-      }),
+      collaborator: serializeCollaborator(collaborator),
     };
   }
 
@@ -238,9 +229,9 @@ export class CollectionsService {
       throw new BadRequestException("Cannot remove owner");
     }
 
-    await this.database
-      .delete(collectionCollaborators)
-      .where(eq(collectionCollaborators.id, collaboratorId));
+    await this.database.collectionCollaborator.delete({
+      where: { id: collaboratorId },
+    });
 
     return {
       message: "Collaborator removed successfully",
@@ -249,13 +240,13 @@ export class CollectionsService {
 
   async listFlashcards(collectionId: string, userId: string) {
     const access = await this.getCollectionAccess(collectionId, userId);
-    const flashcardsList = await this.database.query.flashcards.findMany({
-      where: eq(flashcards.collectionId, collectionId),
-      orderBy: (table, { asc }) => [asc(table.createdAt)],
+    const flashcards = await this.database.flashcard.findMany({
+      where: { collectionId },
+      orderBy: { createdAt: "asc" },
     });
 
     return {
-      flashcards: flashcardsList.map(serializeFlashcard),
+      flashcards: flashcards.map(serializeFlashcard),
       role: access.role,
     };
   }
@@ -266,11 +257,11 @@ export class CollectionsService {
     userId: string,
   ) {
     const access = await this.getCollectionAccess(collectionId, userId);
-    const flashcard = await this.database.query.flashcards.findFirst({
-      where: and(
-        eq(flashcards.id, flashcardId),
-        eq(flashcards.collectionId, collectionId),
-      ),
+    const flashcard = await this.database.flashcard.findFirst({
+      where: {
+        id: flashcardId,
+        collectionId,
+      },
     });
 
     if (!flashcard) {
@@ -294,20 +285,15 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    const [flashcard] = await this.database
-      .insert(flashcards)
-      .values({
+    const flashcard = await this.database.flashcard.create({
+      data: {
         question: data.question,
         answer: data.answer,
         type: data.type ?? "simple",
         collectionId,
         createdBy: userId,
-      })
-      .returning();
-
-    if (!flashcard) {
-      throw new BadRequestException("Unable to create flashcard");
-    }
+      },
+    });
 
     return {
       flashcard: serializeFlashcard(flashcard),
@@ -326,31 +312,25 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    const flashcard = await this.database.query.flashcards.findFirst({
-      where: and(
-        eq(flashcards.id, flashcardId),
-        eq(flashcards.collectionId, collectionId),
-      ),
+    const flashcard = await this.database.flashcard.findFirst({
+      where: {
+        id: flashcardId,
+        collectionId,
+      },
     });
 
     if (!flashcard) {
       throw new NotFoundException("Flashcard not found");
     }
 
-    const [updated] = await this.database
-      .update(flashcards)
-      .set({
+    const updated = await this.database.flashcard.update({
+      where: { id: flashcardId },
+      data: {
         question: data.question ?? flashcard.question,
         answer: data.answer ?? flashcard.answer,
         type: data.type ?? flashcard.type,
-        updatedAt: new Date(),
-      })
-      .where(eq(flashcards.id, flashcardId))
-      .returning();
-
-    if (!updated) {
-      throw new NotFoundException("Flashcard not found");
-    }
+      },
+    });
 
     return {
       flashcard: serializeFlashcard(updated),
@@ -368,20 +348,20 @@ export class CollectionsService {
       throw new ForbiddenException("Permission denied");
     }
 
-    const flashcard = await this.database.query.flashcards.findFirst({
-      where: and(
-        eq(flashcards.id, flashcardId),
-        eq(flashcards.collectionId, collectionId),
-      ),
+    const flashcard = await this.database.flashcard.findFirst({
+      where: {
+        id: flashcardId,
+        collectionId,
+      },
     });
 
     if (!flashcard) {
       throw new NotFoundException("Flashcard not found");
     }
 
-    await this.database
-      .delete(flashcards)
-      .where(eq(flashcards.id, flashcardId));
+    await this.database.flashcard.delete({
+      where: { id: flashcardId },
+    });
 
     return {
       message: "Flashcard deleted successfully",
@@ -391,24 +371,20 @@ export class CollectionsService {
   async startSession(collectionId: string, userId: string) {
     await this.getCollectionAccess(collectionId, userId);
 
-    const flashcardsList = await this.database.query.flashcards.findMany({
-      where: eq(flashcards.collectionId, collectionId),
-      orderBy: (table, { asc }) => [asc(table.createdAt)],
-      columns: { id: true },
+    const flashcards = await this.database.flashcard.findMany({
+      where: { collectionId },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
     });
 
-    if (flashcardsList.length > 0) {
-      await this.database
-        .insert(flashcardReviews)
-        .values(
-          flashcardsList.map((flashcard) => ({
-            flashcardId: flashcard.id,
-            userId,
-          })),
-        )
-        .onConflictDoNothing({
-          target: [flashcardReviews.userId, flashcardReviews.flashcardId],
-        });
+    if (flashcards.length > 0) {
+      await this.database.flashcardReview.createMany({
+        data: flashcards.map((flashcard) => ({
+          flashcardId: flashcard.id,
+          userId,
+        })),
+        skipDuplicates: true,
+      });
     }
 
     return {
@@ -453,11 +429,11 @@ export class CollectionsService {
   async clearProgress(collectionId: string, userId: string) {
     await this.getCollectionAccess(collectionId, userId);
 
-    const flashcardsList = await this.database.query.flashcards.findMany({
-      where: eq(flashcards.collectionId, collectionId),
-      columns: { id: true },
+    const flashcards = await this.database.flashcard.findMany({
+      where: { collectionId },
+      select: { id: true },
     });
-    const flashcardIds = flashcardsList.map((flashcard) => flashcard.id);
+    const flashcardIds = flashcards.map((flashcard) => flashcard.id);
 
     if (flashcardIds.length === 0) {
       return {
@@ -466,18 +442,17 @@ export class CollectionsService {
       };
     }
 
-    const deleted = await this.database
-      .delete(flashcardReviews)
-      .where(
-        and(
-          eq(flashcardReviews.userId, userId),
-          inArray(flashcardReviews.flashcardId, flashcardIds),
-        ),
-      )
-      .returning({ id: flashcardReviews.id });
+    const deleted = await this.database.flashcardReview.deleteMany({
+      where: {
+        userId,
+        flashcardId: {
+          in: flashcardIds,
+        },
+      },
+    });
 
     return {
-      deleted: deleted.length,
+      deleted: deleted.count,
       message: "Learning progress cleared successfully",
     };
   }
@@ -487,8 +462,8 @@ export class CollectionsService {
     userId: string,
     rating: ReviewRating,
   ) {
-    const flashcard = await this.database.query.flashcards.findFirst({
-      where: eq(flashcards.id, flashcardId),
+    const flashcard = await this.database.flashcard.findUnique({
+      where: { id: flashcardId },
     });
 
     if (!flashcard) {
@@ -497,44 +472,29 @@ export class CollectionsService {
 
     await this.getCollectionAccess(flashcard.collectionId, userId);
 
-    let review = await this.database.query.flashcardReviews.findFirst({
-      where: and(
-        eq(flashcardReviews.userId, userId),
-        eq(flashcardReviews.flashcardId, flashcardId),
-      ),
+    let review = await this.database.flashcardReview.findFirst({
+      where: {
+        userId,
+        flashcardId,
+      },
     });
 
     if (!review) {
-      const [created] = await this.database
-        .insert(flashcardReviews)
-        .values({
+      review = await this.database.flashcardReview.create({
+        data: {
           flashcardId,
           userId,
-        })
-        .returning();
-
-      if (!created) {
-        throw new BadRequestException("Unable to create review progress");
-      }
-
-      review = created;
+        },
+      });
     }
 
     const next = calculateNextReview(review, rating);
 
-    await this.database
-      .update(flashcardReviews)
-      .set(next)
-      .where(eq(flashcardReviews.id, review.id));
-
-    const updated = await this.database.query.flashcardReviews.findFirst({
-      where: eq(flashcardReviews.id, review.id),
-      with: { flashcard: true },
+    const updated = await this.database.flashcardReview.update({
+      where: { id: review.id },
+      data: next,
+      include: { flashcard: true },
     });
-
-    if (!updated) {
-      throw new NotFoundException("Review not found");
-    }
 
     return {
       review: serializeReviewProgress(updated),
@@ -545,14 +505,9 @@ export class CollectionsService {
     collectionId: string,
     userId: string,
   ): Promise<{ collection: CollectionAccessRecord; role: CollectionRole }> {
-    const collection = await this.database.query.collections.findFirst({
-      where: eq(collections.id, collectionId),
-      with: {
-        collaborators: {
-          with: { user: true },
-          orderBy: (table, { asc }) => [asc(table.createdAt)],
-        },
-      },
+    const collection = await this.database.collection.findUnique({
+      where: { id: collectionId },
+      include: COLLECTION_WITH_COLLABORATORS_INCLUDE,
     });
 
     if (!collection) {
@@ -581,25 +536,20 @@ export class CollectionsService {
     collectionId: string,
     userId: string,
   ) {
-    const rows = await this.database
-      .select({
-        review: flashcardReviews,
-        flashcard: flashcards,
-      })
-      .from(flashcardReviews)
-      .innerJoin(flashcards, eq(flashcardReviews.flashcardId, flashcards.id))
-      .where(
-        and(
-          eq(flashcardReviews.userId, userId),
-          eq(flashcards.collectionId, collectionId),
-        ),
-      )
-      .orderBy(asc(flashcardReviews.dueAt));
-
-    return rows.map((row) => ({
-      ...row.review,
-      flashcard: row.flashcard,
-    }));
+    return this.database.flashcardReview.findMany({
+      where: {
+        userId,
+        flashcard: {
+          collectionId,
+        },
+      },
+      include: {
+        flashcard: true,
+      },
+      orderBy: {
+        dueAt: "asc",
+      },
+    });
   }
 
   private canEditCollection(role: CollectionRole) {

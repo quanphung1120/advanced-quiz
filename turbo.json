@@ -3,87 +3,106 @@
   "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "env": [
-        "DATABASE_URL",
-        "AUTH_SECRET",
-        "API_URL",
-        "WEB_URL",
-        "CORS_ORIGIN",
-        "VITE_API_URL",
-        "VITE_CLOUDINARY_CLOUD_NAME"
-      ],
+      "dependsOn": ["^build"],
       "inputs": [
         "$TURBO_DEFAULT$",
-        ".env.production.local",
-        ".env.local",
-        ".env.production",
-        ".env"
+        "!**/.env",
+        "!**/.env.*",
+        "!dist/**",
+        "!.turbo/**",
+        "!node_modules/**",
+        "!coverage/**",
+        "!**/*.tsbuildinfo"
       ],
-      "outputs": [
-        "dist/**",
-        "!dist/cache/**"
-      ]
+      "outputs": ["dist/**", "src/generated/**", "!dist/cache/**"]
     },
     "dev": {
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true,
-      "env": [
-        "DATABASE_URL"
-      ],
       "inputs": [
         "$TURBO_DEFAULT$",
         ".env.development.local",
         ".env.local",
         ".env.development",
-        ".env"
+        ".env",
+        "!dist/**",
+        "!.turbo/**",
+        "!node_modules/**",
+        "!coverage/**",
+        "!**/*.tsbuildinfo"
       ]
     },
     "lint": {
-      "dependsOn": [
-        "^build"
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/.env",
+        "!**/.env.*",
+        "!dist/**",
+        "!.turbo/**",
+        "!node_modules/**",
+        "!coverage/**",
+        "!**/*.tsbuildinfo"
+      ]
+    },
+    "format": {
+      "dependsOn": ["^format"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/.env",
+        "!**/.env.*",
+        "!dist/**",
+        "!.turbo/**",
+        "!node_modules/**",
+        "!coverage/**",
+        "!**/*.tsbuildinfo"
+      ]
+    },
+    "format:check": {
+      "dependsOn": ["^format:check"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/.env",
+        "!**/.env.*",
+        "!dist/**",
+        "!.turbo/**",
+        "!node_modules/**",
+        "!coverage/**",
+        "!**/*.tsbuildinfo"
       ]
     },
     "check-types": {
-      "dependsOn": [
-        "^check-types"
+      "dependsOn": ["^build", "^check-types"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!dist/**",
+        "!.turbo/**",
+        "!node_modules/**",
+        "!coverage/**",
+        "!**/*.tsbuildinfo"
       ],
-      "env": [
-        "DATABASE_URL"
-      ]
+      "outputs": []
     },
     "db:generate": {
       "cache": false,
-      "env": [
-        "DATABASE_URL"
-      ]
+      "env": ["DATABASE_URL"]
     },
     "db:deploy": {
       "cache": false,
-      "env": [
-        "DATABASE_URL"
-      ]
+      "env": ["DATABASE_URL"]
     },
     "db:migrate": {
       "cache": false,
-      "env": [
-        "DATABASE_URL"
-      ]
+      "env": ["DATABASE_URL"]
     },
     "db:push": {
       "cache": false,
-      "env": [
-        "DATABASE_URL"
-      ]
+      "env": ["DATABASE_URL"]
     },
     "db:studio": {
       "cache": false,
       "persistent": true,
-      "env": [
-        "DATABASE_URL"
-      ]
+      "env": ["DATABASE_URL"]
     }
   }
 }

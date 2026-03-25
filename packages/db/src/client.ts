@@ -1,31 +1,30 @@
 import "dotenv/config";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
-import * as schema from "./schema";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "./generated/prisma/client.js";
 
 const connectionString = process.env.DATABASE_URL;
+
 if (!connectionString) {
-  throw new Error("DATABASE_URL environment variable is not set");
+  throw new Error("DATABASE_URL is required to initialize Prisma");
 }
 
-const globalForDb = globalThis as unknown as {
-  db?: DatabaseClient;
-  pool?: Pool;
+type GlobalForPrisma = typeof globalThis & {
+  prisma?: PrismaClient;
 };
 
-const createPool = () =>
-  new Pool({
-    connectionString,
+const globalForPrisma = globalThis as GlobalForPrisma;
+
+export type DatabaseClient = PrismaClient;
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString,
+    }),
+    log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 
-const createDatabase = (pool: Pool) => drizzle(pool, { schema });
-
-export type DatabaseClient = ReturnType<typeof createDatabase>;
-
-export const pool = globalForDb.pool ?? createPool();
-export const db = globalForDb.db ?? createDatabase(pool);
-
 if (process.env.NODE_ENV !== "production") {
-  globalForDb.pool = pool;
-  globalForDb.db = db;
+  globalForPrisma.prisma = prisma;
 }

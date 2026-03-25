@@ -1,0 +1,12 @@
+{
+  "extends": "@advanced-quiz/typescript-config/react-library.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@advanced-quiz/ui/*": ["./src/*"]
+    }
+  },
+  "include": ["."],
+  "exclude": ["node_modules", "dist"]
+}

@@ -8,10 +8,10 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import type { CollectionCollaborator } from "@/features/collections/api/collections-api";
+import { Button } from "@advanced-quiz/ui/components/button";
+import type { CollectionCollaborator } from "@/features/collections/types/collection";
 import { useRemoveCollaborator } from "../hooks/use-collections";
 import { AddCollaboratorModal } from "./add-collaborator-modal";
-import { Button } from "@/components/ui/button";
 
 type CollaboratorsPanelProps = {
   canManage: boolean;

@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { Link } from "react-router";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ModeToggle } from "@/components/mode-toggle";
 
 type AuthPageShellProps = PropsWithChildren<{
   title: string;
@@ -46,7 +46,7 @@ export function AuthPageShell({
       <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 py-16 sm:px-12">
         {/* Top bar */}
         <div className="absolute top-5 right-5 flex items-center gap-4">
-          <ThemeToggle />
+          <ModeToggle />
         </div>
 
         {/* Mobile: show left panel text */}
