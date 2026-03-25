@@ -22,6 +22,8 @@ After this change, the API and web containers will build faster from the same mo
 - [x] (2026-03-25 13:35Z) Verified the failing path locally with `DATABASE_URL=... pnpm --filter @advanced-quiz/db build`.
 - [x] (2026-03-25 13:39Z) Hardened the API Docker builder step to apply the placeholder `DATABASE_URL` with shell fallback semantics so empty platform-provided build args do not erase the default.
 - [x] (2026-03-25 13:39Z) Verified the full `pnpm turbo run build --filter=@advanced-quiz/api` path succeeds even when `PRISMA_BUILD_DATABASE_URL` is explicitly empty.
+- [x] (2026-03-25 13:42Z) Aligned the DB package with Turborepo’s official environment-variable guidance by declaring `DATABASE_URL` on the `build` task in `packages/db/turbo.json`.
+- [x] (2026-03-25 13:42Z) Re-ran the API build path, `pnpm run check-types`, and `pnpm run lint` after the Turborepo config change.
 
 ## Surprises & Discoveries
 
@@ -39,6 +41,9 @@ After this change, the API and web containers will build faster from the same mo
 
 - Observation: A Docker `ARG` default is not sufficient if the deployment platform injects the same build arg as an empty string, because that empty value replaces the Dockerfile default.
   Evidence: The builder stage now uses shell fallback expansion in the `RUN` command, and `PRISMA_BUILD_DATABASE_URL='' ... pnpm turbo run build --filter=@advanced-quiz/api` succeeds locally.
+
+- Observation: Turborepo’s official environment-variable docs explicitly say that Strict Mode filters task runtime env to declared `env` and `globalEnv`, and that dependency packages with their own build step should declare the required variable in that package’s own `turbo.json`.
+  Evidence: Turborepo docs state that Strict Mode only exposes variables listed in config and that when an app depends on a package build task, the package can declare its environment variable in its own `turbo.json` so rebuilds flow through the dependency graph.
 
 ## Decision Log
 
@@ -66,13 +71,17 @@ After this change, the API and web containers will build faster from the same mo
   Rationale: This survives platforms that pass an empty build argument and would otherwise turn the build-time `DATABASE_URL` into an empty value.
   Date/Author: 2026-03-25 / Codex
 
+- Decision: Declare `DATABASE_URL` on `packages/db`'s `build` task instead of only relying on Docker-side injection.
+  Rationale: This matches Turborepo’s documented Strict Mode behavior and package-level environment-variable guidance, and it keeps cache invalidation correct for the DB package build.
+  Date/Author: 2026-03-25 / Codex
+
 ## Outcomes & Retrospective
 
 The API and web Dockerfiles now use the same high-level structure: a shared toolchain base, a Turborepo prune stage, a builder stage that installs dependencies from pruned manifests with a cached pnpm store, and a runtime stage tailored to the deployed surface. This keeps the Dockerfiles parallel and easier to maintain.
 
 The API runtime image is leaner than before because it no longer copies every pruned workspace package into the final image. Instead, it carries only root workspace metadata, `node_modules`, `packages/contracts`, `packages/db`, and `apps/api-new`, which is the current runtime boundary implied by the API package graph and migration step. The web runtime remains nginx-only, which was already the right deployment shape.
 
-Repository validation succeeded with `pnpm run check-types` and `pnpm run lint`. The specific Dokploy failure was reproduced at the package level and then addressed more robustly by applying a build-only placeholder `DATABASE_URL` with shell fallback semantics in the API Docker builder stage. The full `pnpm turbo run build --filter=@advanced-quiz/api` path now succeeds locally even when `PRISMA_BUILD_DATABASE_URL` is empty. Container-build validation still could not be completed in this session because the WSL environment does not have Docker or another supported container CLI installed. That is the remaining follow-up step on a Docker-capable machine.
+Repository validation succeeded with `pnpm run check-types` and `pnpm run lint`. The specific Dokploy failure was reproduced at the package level and then addressed in two layers: a build-only placeholder `DATABASE_URL` with shell fallback semantics in the API Docker builder stage, and an explicit `DATABASE_URL` declaration on the `packages/db` `build` task so the setup matches Turborepo’s official Strict Mode guidance. The full `pnpm turbo run build --filter=@advanced-quiz/api` path now succeeds locally. Container-build validation still could not be completed in this session because the WSL environment does not have Docker or another supported container CLI installed. That is the remaining follow-up step on a Docker-capable machine.
 
 ## Context and Orientation
 
@@ -166,6 +175,15 @@ Validation evidence from this session:
     PRISMA_BUILD_DATABASE_URL='' sh -lc 'DATABASE_URL="${PRISMA_BUILD_DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public}" pnpm turbo run build --filter=@advanced-quiz/api'
     Tasks: 3 successful, 3 total
 
+    DATABASE_URL=postgresql://postgres:postgres@localhost:5432/advanced_quiz?schema=public pnpm turbo run build --filter=@advanced-quiz/api
+    Tasks: 3 successful, 3 total
+
+    pnpm run check-types
+    Tasks: 7 successful, 7 total
+
+    pnpm run lint
+    Tasks: 5 successful, 5 total
+
     docker version --format '{{.Server.Version}}'
     The command 'docker' could not be found in this WSL 2 distro.
 
@@ -182,3 +200,5 @@ Revision note: Updated the plan after implementation to record the BuildKit cach
 Revision note: Updated the plan after the Dokploy failure report to record Prisma's build-time `DATABASE_URL` requirement and the builder-stage placeholder fix.
 
 Revision note: Updated the plan again after observing that an empty platform-provided build arg can erase a Docker `ARG` default; the builder stage now uses shell fallback expansion to stay robust in that case.
+
+Revision note: Updated the plan again after checking Turborepo’s official environment-variable documentation and aligning `packages/db/turbo.json` with the documented package-level `env` pattern for dependency builds.
